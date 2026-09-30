@@ -134,14 +134,15 @@ export function normalizeCatalogForRemote(catalog: Catalog): Catalog {
   return { cats, groups, prods };
 }
 
-export async function saveRemoteCatalog(catalog: Catalog): Promise<{ ok: boolean; error?: string }> {
+export async function saveRemoteCatalog(catalog: Catalog): Promise<{ ok: boolean; error?: string; catalog?: Catalog }> {
   if (!supabase) return { ok: false, error: "Supabase não configurado." };
 
-  const categoryRows = catalog.cats.map((c, index) => ({ id:c.id, name:c.n, sort_order:index, active:true }));
-  const productRows = catalog.prods.map((p, index) => ({ id:p.id, category_id:p.c || null, name:p.n, description:p.d, price:p.p, unit:p.u, image_url:p.i, sort_order:index, active:p.on }));
-  const groupRows = catalog.groups.map((g, index) => ({ id:g.id, name:g.n, min_select:g.min ?? 0, max_select:g.max ?? 1, sort_order:index, active:true }));
-  const itemRows = catalog.groups.flatMap(g => g.items.map((i,index) => ({ id:i.id, group_id:g.id, name:i.n, price:i.p, sort_order:index, active:i.on })));
-  const linkRows = catalog.prods.flatMap(p => p.a.map(group_id => ({ product_id:p.id, group_id })));
+  const normalized = normalizeCatalogForRemote(catalog);
+  const categoryRows = normalized.cats.map((c, index) => ({ id:c.id, name:c.n, sort_order:index, active:true }));
+  const productRows = normalized.prods.map((p, index) => ({ id:p.id, category_id:p.c || null, name:p.n, description:p.d, price:p.p, unit:p.u, image_url:p.i, sort_order:index, active:p.on }));
+  const groupRows = normalized.groups.map((g, index) => ({ id:g.id, name:g.n, min_select:g.min ?? 0, max_select:g.max ?? 1, sort_order:index, active:true }));
+  const itemRows = normalized.groups.flatMap(g => g.items.map((i,index) => ({ id:i.id, group_id:g.id, name:i.n, price:i.p, sort_order:index, active:i.on })));
+  const linkRows = normalized.prods.flatMap(p => p.a.map(group_id => ({ product_id:p.id, group_id })));
 
   const writes = await Promise.all([
     supabase.from("catalog_categories").upsert(categoryRows),
@@ -158,5 +159,5 @@ export async function saveRemoteCatalog(catalog: Catalog): Promise<{ ok: boolean
     const inserted = await supabase.from("catalog_product_addon_groups").insert(linkRows);
     if (inserted.error) return { ok:false, error:inserted.error.message };
   }
-  return { ok:true };
+  return { ok:true, catalog: normalized };
 }
