@@ -174,34 +174,38 @@ function CatalogAdminPage() {
 
   return (
     <div className="min-h-screen bg-[#f6f7f9] text-[#171717]">
-      <header className="sticky top-0 z-30 border-b border-black/10 bg-white/95 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r border-black/10 bg-white lg:flex lg:flex-col">
+        <div className="border-b border-black/10 px-5 py-5">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Ferreira Sourdough</p>
+          <h1 className="mt-1 text-lg font-semibold">Administração</h1>
+        </div>
+        <nav className="flex-1 space-y-1 p-3">
+          <NavButton active={section === "produtos"} onClick={() => setSection("produtos")}>Produtos <Badge>{catalog.prods.length}</Badge></NavButton>
+          <NavButton active={section === "categorias"} onClick={() => setSection("categorias")}>Categorias <Badge>{catalog.cats.length}</Badge></NavButton>
+          <NavButton active={section === "adicionais"} onClick={() => setSection("adicionais")}>Adicionais <Badge>{catalog.groups.length}</Badge></NavButton>
+          <div className="my-3 border-t border-black/5" />
+          <button onClick={exportCatalog} className="w-full rounded-xl px-3 py-2.5 text-left text-sm font-medium hover:bg-gray-50">Exportar catálogo</button>
+          <label className="block cursor-pointer rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-gray-50">Importar catálogo<input type="file" accept=".json,application/json" className="hidden" onChange={(e) => e.target.files?.[0] && importCatalog(e.target.files[0])} /></label>
+        </nav>
+        <div className="border-t border-black/10 p-3">
+          <Link to="/" className="block rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-gray-50">← Voltar ao site</Link>
+        </div>
+      </aside>
+
+      <header className="sticky top-0 z-30 border-b border-black/10 bg-white/95 backdrop-blur lg:ml-64">
+        <div className="flex items-center justify-between gap-3 px-4 py-4 sm:px-6">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#777]">Ferreira Sourdough</p>
-            <h1 className="text-xl font-semibold tracking-tight">Administração do catálogo</h1>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 lg:hidden">Ferreira Sourdough</p>
+            <h1 className="text-lg font-semibold lg:text-xl">Administração do catálogo</h1>
           </div>
           <div className="flex items-center gap-2">
             {notice && <span className="hidden rounded-full bg-green-50 px-3 py-1.5 text-xs font-medium text-green-700 sm:block">{notice}</span>}
-            <Link to="/" className="rounded-lg border border-black/10 bg-white px-3 py-2 text-sm font-medium hover:bg-gray-50">
-              Ver site
-            </Link>
+            <Link to="/" className="rounded-lg border border-black/10 bg-white px-3 py-2 text-sm font-medium hover:bg-gray-50">Ver site</Link>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[220px_1fr]">
-        <aside className="h-fit rounded-2xl border border-black/10 bg-white p-2 shadow-sm">
-          <NavButton active={section === "produtos"} onClick={() => setSection("produtos")}>Produtos <Badge>{catalog.prods.length}</Badge></NavButton>
-          <NavButton active={section === "categorias"} onClick={() => setSection("categorias")}>Categorias <Badge>{catalog.cats.length}</Badge></NavButton>
-          <NavButton active={section === "adicionais"} onClick={() => setSection("adicionais")}>Adicionais <Badge>{catalog.groups.length}</Badge></NavButton>
-          <div className="my-2 border-t border-black/5" />
-          <button onClick={exportCatalog} className="w-full rounded-xl px-3 py-2.5 text-left text-sm font-medium hover:bg-gray-50">Exportar catálogo</button>
-          <label className="block cursor-pointer rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-gray-50">
-            Importar catálogo
-            <input type="file" accept=".json,application/json" className="hidden" onChange={(e) => e.target.files?.[0] && importCatalog(e.target.files[0])} />
-          </label>
-        </aside>
-
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:ml-64">
         <section className="min-w-0">
           {section === "produtos" && (
             <>
@@ -251,6 +255,14 @@ function CatalogAdminPage() {
           {section === "adicionais" && <AddonManager catalog={catalog} commit={commit} />}
         </section>
       </main>
+
+      <div className="border-t border-black/10 bg-white px-4 py-3 lg:hidden">
+        <div className="flex gap-2 overflow-x-auto">
+          <NavButton active={section === "produtos"} onClick={() => setSection("produtos")}>Produtos <Badge>{catalog.prods.length}</Badge></NavButton>
+          <NavButton active={section === "categorias"} onClick={() => setSection("categorias")}>Categorias <Badge>{catalog.cats.length}</Badge></NavButton>
+          <NavButton active={section === "adicionais"} onClick={() => setSection("adicionais")}>Adicionais <Badge>{catalog.groups.length}</Badge></NavButton>
+        </div>
+      </div>
 
       {editing && <ProductEditor product={editing} catalog={catalog} onCancel={() => setEditing(null)} onSave={updateProduct} />}
     </div>
