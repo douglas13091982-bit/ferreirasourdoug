@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import type { Catalog, CatalogProduct } from "@/lib/catalog";
-import { loadRemoteCatalog } from "@/lib/catalog";
+import { loadRemoteCatalog, readLocalCatalog } from "@/lib/catalog";
 import { productMatchesSlug } from "@/lib/product-slug";
 
 const whatsapp = "5547988776543";
@@ -23,7 +23,7 @@ function ProductPage() {
   useEffect(() => {
     let active = true;
     loadRemoteCatalog().then((remote) => {
-      if (active && remote) setCatalog(remote);
+      if (active) setCatalog(remote ?? readLocalCatalog());
       if (active) setLoading(false);
     });
     return () => { active = false; };
