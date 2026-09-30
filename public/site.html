@@ -294,6 +294,14 @@ $('ad').addEventListener('click',function(e){var b=e.target.closest('button');if
  else if(a==='bi'){try{var c2=JSON.parse($('bt2').value);if(!c2.prods||!c2.cats)throw 0;CAT=c2;persist()}catch(x2){alert('Texto inválido.');return}}
  else if(a==='br'){if(confirm('Voltar ao cardápio original?')){CAT=JSON.parse(JSON.stringify(DEF));persist()}}
  adm();tabs();grid()});
+window.addEventListener('message',function(e){
+ if(e.origin!==window.location.origin||!e.data||e.data.type!=='FERREIRA_CATALOG'||!e.data.catalog)return;
+ var c=e.data.catalog;
+ if(!Array.isArray(c.prods)||!Array.isArray(c.cats)||!Array.isArray(c.groups))return;
+ CAT={prods:c.prods,cats:c.cats,groups:c.groups};
+ try{localStorage.setItem(KEY,JSON.stringify(CAT))}catch(err){}
+ F='all';tabs();grid();
+});
 window.addEventListener('hashchange',function(){if(location.hash==='#admin')openAdmin()});
 loadAll().then(function(){if(location.hash==='#admin')openAdmin()});
 </script>
