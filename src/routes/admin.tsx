@@ -260,65 +260,93 @@ function CatalogAdminPage() {
 function AdminAuthGate({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState<Session | null>(null);
+  const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [checkingAdmin, setCheckingAdmin] = useState(false);
+  const [info, setInfo] = useState("");
+  const [busy, setBusy] = useState(false);
   const [authorized, setAuthorized] = useState(false);
+  const [canClaim, setCanClaim] = useState(false);
+
+  async function checkAccess(next: Session | null) {
+    setSession(next);
+    if (!next) { setAuthorized(false); setCanClaim(false); return; }
+    const { data: admin } = await supabase.from("catalog_admins").select("user_id").eq("user_id", next.user.id).maybeSingle();
+    if (admin) { setAuthorized(true); setCanClaim(false); return; }
+    setAuthorized(false);
+    const { data: exists } = await supabase.rpc("catalog_admin_exists");
+    setCanClaim(exists === false);
+  }
 
   useEffect(() => {
-    if (!supabase) { setLoading(false); return; }
     let active = true;
-    async function syncSession(next: Session | null) {
-      if (!active) return;
-      setSession(next);
-      if (!next) { setAuthorized(false); return; }
-      const { data: admin } = await supabase.from("catalog_admins").select("user_id").eq("user_id", next.user.id).maybeSingle();
-      if (active) {
-        setAuthorized(Boolean(admin));
-        if (!admin) await supabase.auth.signOut();
-      }
-    }
     supabase.auth.getSession().then(({ data }) => {
-      void syncSession(data.session).finally(() => { if (active) setLoading(false); });
+      void checkAccess(data.session).finally(() => { if (active) setLoading(false); });
     });
-    const { data } = supabase.auth.onAuthStateChange((_event, next) => { void syncSession(next); });
+    const { data } = supabase.auth.onAuthStateChange((event, next) => {
+      if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED") setTimeout(() => { if (active) void checkAccess(next); }, 0);
+    });
     return () => { active = false; data.subscription.unsubscribe(); };
   }, []);
 
-  async function login(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!supabase) return;
-    setCheckingAdmin(true); setError("");
-    const { data, error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-    if (signInError || !data.user) { setError(signInError?.message || "Não foi possível entrar."); setCheckingAdmin(false); return; }
-    const { data: admin, error: adminError } = await supabase.from("catalog_admins").select("user_id").eq("user_id", data.user.id).maybeSingle();
-    if (adminError || !admin) {
-      await supabase.auth.signOut();
-      setAuthorized(false);
-      setError("Esta conta não está autorizada como administrador.");
-    } else {
-      setAuthorized(true);
+    setBusy(true); setError(""); setInfo("");
+    if (mode === "signup") {
+      const { error: signUpError } = await supabase.auth.signUp({ email: email.trim(), password, options: { emailRedirectTo: window.location.origin + "/admin" } });
+      if (signUpError) setError(signUpError.message);
+      else { setInfo("Conta criada! Abra o e-mail de confirmação que enviamos e clique no link. Depois volte aqui e entre."); setMode("login"); setPassword(""); }
+      setBusy(false); return;
     }
-    setCheckingAdmin(false);
+    const { data, error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    if (signInError || !data.session) setError(signInError?.message === "Email not confirmed" ? "Confirme seu e-mail antes de entrar." : "E-mail ou senha incorretos.");
+    else await checkAccess(data.session);
+    setBusy(false);
   }
 
-  async function logout() { await supabase?.auth.signOut(); }
+  async function claim() {
+    setBusy(true); setError("");
+    const { data, error: claimError } = await supabase.rpc("claim_catalog_admin");
+    if (claimError) setError("Não foi possível ativar. Confirme seu e-mail e tente novamente.");
+    else if (!data) { setError("Já existe um administrador. Esta conta não foi autorizada."); setCanClaim(false); }
+    else await checkAccess(session);
+    setBusy(false);
+  }
 
+  async function logout() { await supabase.auth.signOut(); }
+
+  const card = "w-full max-w-md rounded-3xl border border-black/10 bg-white p-7 shadow-xl sm:p-9";
   if (loading) return <div className="flex min-h-screen items-center justify-center bg-[#f6f7f9] text-sm text-gray-500">Carregando acesso seguro...</div>;
-  if (!supabase) return <AuthMessage title="Painel administrativo" message="O Supabase ainda não está configurado neste ambiente. Defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no ambiente de publicação para ativar o login." />;
-  if (!session || !authorized) return (
+
+  if (session && !authorized) return (
     <div className="flex min-h-screen items-center justify-center bg-[#f6f7f9] px-4 py-10">
-      <form onSubmit={login} className="w-full max-w-md rounded-3xl border border-black/10 bg-white p-7 shadow-xl sm:p-9">
+      <div className={card}>
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Ferreira Sourdough</p>
-        <h1 className="mt-2 text-2xl font-semibold">Acesso administrativo</h1>
-        <p className="mt-2 text-sm text-gray-500">Entre com sua conta de administrador para gerenciar o catálogo.</p>
+        <h1 className="mt-2 text-2xl font-semibold">{canClaim ? "Ativar administrador" : "Acesso não autorizado"}</h1>
+        <p className="mt-2 text-sm text-gray-500">Conectado como <strong>{session.user.email}</strong>.</p>
+        <p className="mt-3 text-sm text-gray-600">{canClaim ? "Ainda não existe nenhum administrador. Ative esta conta como a administradora do painel. Isso só pode ser feito uma única vez." : "Esta conta não tem permissão para acessar o painel."}</p>
+        {error && <p className="mt-4 rounded-xl bg-red-50 px-3 py-2.5 text-sm text-red-700">{error}</p>}
+        {canClaim && <button onClick={claim} disabled={busy} className="mt-6 w-full rounded-xl bg-[#171717] px-4 py-3 text-sm font-semibold text-white disabled:opacity-60">{busy ? "Ativando..." : "Ativar minha conta de administrador"}</button>}
+        <button onClick={logout} className="mt-3 w-full rounded-xl border border-black/10 px-4 py-3 text-sm font-medium">Sair</button>
+      </div>
+    </div>
+  );
+
+  if (!session) return (
+    <div className="flex min-h-screen items-center justify-center bg-[#f6f7f9] px-4 py-10">
+      <form onSubmit={submit} className={card}>
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Ferreira Sourdough</p>
+        <h1 className="mt-2 text-2xl font-semibold">{mode === "login" ? "Acesso administrativo" : "Criar conta"}</h1>
+        <p className="mt-2 text-sm text-gray-500">{mode === "login" ? "Entre com sua conta de administrador para gerenciar o catálogo." : "Crie sua conta. Você vai receber um e-mail para confirmar."}</p>
         <div className="mt-7 space-y-4">
           <Field label="E-mail"><input required type="email" autoComplete="username" value={email} onChange={e => setEmail(e.target.value)} className={inputClass} /></Field>
-          <Field label="Senha"><input required type="password" autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} className={inputClass} /></Field>
+          <Field label="Senha"><input required minLength={8} type="password" autoComplete={mode === "login" ? "current-password" : "new-password"} value={password} onChange={e => setPassword(e.target.value)} className={inputClass} /></Field>
         </div>
         {error && <p className="mt-4 rounded-xl bg-red-50 px-3 py-2.5 text-sm text-red-700">{error}</p>}
-        <button disabled={checkingAdmin} className="mt-6 w-full rounded-xl bg-[#171717] px-4 py-3 text-sm font-semibold text-white disabled:opacity-60">{checkingAdmin ? "Entrando..." : "Entrar"}</button>
+        {info && <p className="mt-4 rounded-xl bg-green-50 px-3 py-2.5 text-sm text-green-800">{info}</p>}
+        <button disabled={busy} className="mt-6 w-full rounded-xl bg-[#171717] px-4 py-3 text-sm font-semibold text-white disabled:opacity-60">{busy ? "Aguarde..." : mode === "login" ? "Entrar" : "Criar conta"}</button>
+        <button type="button" onClick={() => { setMode(mode === "login" ? "signup" : "login"); setError(""); setInfo(""); }} className="mt-3 w-full text-center text-sm text-gray-600 hover:text-gray-900">{mode === "login" ? "Primeiro acesso? Criar conta" : "Já tenho conta. Entrar"}</button>
         <Link to="/" className="mt-4 block text-center text-sm text-gray-500 hover:text-gray-900">Voltar ao site</Link>
       </form>
     </div>
@@ -366,10 +394,10 @@ function ProductEditor({ product, catalog, onCancel, onSave }: { product: Produc
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Nome"><input value={form.n} onChange={(e) => set("n", e.target.value)} className={inputClass} /></Field>
-          <Field label="Categoria"><select value={form.c} onChange={(e) => set("c", e.target.value)} className={input}><option value="">Sem categoria</option>{catalog.cats.map((c) => <option key={c.id} value={c.id}>{c.n}</option>)}</select></Field>
+          <Field label="Categoria"><select value={form.c} onChange={(e) => set("c", e.target.value)} className={inputClass}><option value="">Sem categoria</option>{catalog.cats.map((c) => <option key={c.id} value={c.id}>{c.n}</option>)}</select></Field>
           <Field label="Preço"><input type="number" step="0.01" value={form.p ?? ""} onChange={(e) => set("p", e.target.value === "" ? null : Number(e.target.value))} className={inputClass} /></Field>
-          <Field label="Unidade"><input value={form.u} onChange={(e) => set("u", e.target.value)} placeholder="/un, /100g..." className={input} /></Field>
-          <div className="sm:col-span-2"><Field label="Descrição"><textarea value={form.d} onChange={(e) => set("d", e.target.value)} rows={4} className={input} /></Field></div>
+          <Field label="Unidade"><input value={form.u} onChange={(e) => set("u", e.target.value)} placeholder="/un, /100g..." className={inputClass} /></Field>
+          <div className="sm:col-span-2"><Field label="Descrição"><textarea value={form.d} onChange={(e) => set("d", e.target.value)} rows={4} className={inputClass} /></Field></div>
           <div className="sm:col-span-2"><Field label="Imagem"><input type="file" accept="image/*" onChange={(e) => readImage(e.target.files?.[0])} className="block w-full rounded-xl border border-black/10 p-3 text-sm" />{preview && <img src={preview} alt="" className="mt-3 h-32 w-32 rounded-2xl object-cover" />}</Field></div>
           <label className="flex items-center gap-3 text-sm font-medium sm:col-span-2"><input type="checkbox" checked={form.on} onChange={(e) => set("on", e.target.checked)} className="h-4 w-4" /> Produto visível no cardápio</label>
         </div>
