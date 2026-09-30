@@ -82,7 +82,12 @@ function CatalogAdminPage() {
   function commit(next: Catalog, message = "Alterações salvas.") {
     setCatalog(next);
     saveLocalCatalog(next);
-    void saveRemoteCatalog(next);
+    void saveRemoteCatalog(next).then((result) => {
+      if (result.ok && result.catalog) {
+        setCatalog(result.catalog);
+        saveLocalCatalog(result.catalog);
+      }
+    });
     setNotice(message);
     window.setTimeout(() => setNotice(""), 2200);
   }
