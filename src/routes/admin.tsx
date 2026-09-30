@@ -2,8 +2,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { loadRemoteCatalog, readLocalCatalog, saveLocalCatalog, type Catalog, type Product, type Category, type AddonGroup } from "@/lib/catalog";
 
-const STORAGE_KEY = "fs_catalog_v1";
-
 type Product = {
   id: string;
   c: string;
@@ -54,7 +52,7 @@ function money(value: number | null) {
 }
 
 function AdminPage() {
-  const [catalog, setCatalog] = useState<Catalog>(emptyCatalog);
+  const [catalog, setCatalog] = useState<Catalog>({ prods: [], cats: [], groups: [] });
   const [section, setSection] = useState<"produtos" | "categorias" | "adicionais">("produtos");
   const [query, setQuery] = useState("");
   const [editing, setEditing] = useState<Product | null>(null);
