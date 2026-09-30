@@ -280,7 +280,7 @@ function ProductEditor({ product, catalog, onCancel, onSave }: { product: Produc
           <button onClick={onCancel} className="rounded-full px-3 py-1 text-lg text-gray-400 hover:bg-gray-100">×</button>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Nome"><input value={form.n} onChange={(e) => set("n", e.target.value)} className={input} /></Field>
+          <Field label="Nome"><input value={form.n} onChange={(e) => set("n", e.target.value)} className={inputClass} /></Field>
           <Field label="Categoria"><select value={form.c} onChange={(e) => set("c", e.target.value)} className={input}><option value="">Sem categoria</option>{catalog.cats.map((c) => <option key={c.id} value={c.id}>{c.n}</option>)}</select></Field>
           <Field label="Preço"><input type="number" step="0.01" value={form.p ?? ""} onChange={(e) => set("p", e.target.value === "" ? null : Number(e.target.value))} className={input} /></Field>
           <Field label="Unidade"><input value={form.u} onChange={(e) => set("u", e.target.value)} placeholder="/un, /100g..." className={input} /></Field>
@@ -294,7 +294,7 @@ function ProductEditor({ product, catalog, onCancel, onSave }: { product: Produc
   );
 }
 
-const input = "mt-1 w-full rounded-xl border border-black/10 bg-gray-50 px-3.5 py-3 text-sm outline-none focus:border-black/30";
+const inputClass = "mt-1 w-full rounded-xl border border-black/10 bg-gray-50 px-3.5 py-3 text-sm outline-none focus:border-black/30";
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return <label className="block text-sm font-medium">{label}{children}</label>;
@@ -312,7 +312,7 @@ function CategoryManager({ catalog, commit }: { catalog: Catalog; commit: (next:
     if (catalog.prods.some((p) => p.c === id)) return window.alert("Não é possível excluir uma categoria que possui produtos.");
     commit({ ...catalog, cats: catalog.cats.filter((c) => c.id !== id) }, "Categoria excluída.");
   }
-  return <Manager title="Categorias" description="Organize os produtos do cardápio." input={name} setInput={setName} onAdd={add} addLabel="Nova categoria">{catalog.cats.map((c) => <div key={c.id} className="flex items-center justify-between border-b border-black/5 px-5 py-4 last:border-0"><span className="font-medium">{c.n}</span><button onClick={() => remove(c.id)} className="text-sm text-red-600">Excluir</button></div>)}</Manager>;
+  return <Manager title="Categorias" description="Organize os produtos do cardápio." inputValue={name} setInput={setName} onAdd={add} addLabel="Nova categoria">{catalog.cats.map((c) => <div key={c.id} className="flex items-center justify-between border-b border-black/5 px-5 py-4 last:border-0"><span className="font-medium">{c.n}</span><button onClick={() => remove(c.id)} className="text-sm text-red-600">Excluir</button></div>)}</Manager>;
 }
 
 function AddonManager({ catalog, commit }: { catalog: Catalog; commit: (next: Catalog, message?: string) => void }) {
@@ -330,6 +330,6 @@ function AddonManager({ catalog, commit }: { catalog: Catalog; commit: (next: Ca
   return <Manager title="Adicionais" description="Gerencie grupos de complementos usados pelos produtos." input={name} setInput={setName} onAdd={add} addLabel="Novo grupo">{catalog.groups.map((g) => <div key={g.id} className="flex items-center justify-between border-b border-black/5 px-5 py-4 last:border-0"><div><p className="font-medium">{g.n}</p><p className="text-xs text-gray-500">{g.items.length} opções</p></div><button onClick={() => remove(g.id)} className="text-sm text-red-600">Excluir</button></div>)}</Manager>;
 }
 
-function Manager({ title, description, input, setInput, onAdd, addLabel, children }: { title: string; description: string; input: string; setInput: (value: string) => void; onAdd: () => void; addLabel: string; children: React.ReactNode }) {
-  return <><div className="mb-5"><h2 className="text-2xl font-semibold">{title}</h2><p className="mt-1 text-sm text-gray-500">{description}</p></div><div className="mb-4 flex gap-2"><input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && onAdd()} placeholder={`Nome de ${title.toLowerCase()}...`} className={`flex-1 ${input}`} /><button onClick={onAdd} className="rounded-xl bg-[#171717] px-4 py-2.5 text-sm font-semibold text-white">{addLabel}</button></div><div className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm">{children}</div></>;
+function Manager({ title, description, inputValue, setInput, onAdd, addLabel, children }: { title: string; description: string; inputValue: string; setInput: (value: string) => void; onAdd: () => void; addLabel: string; children: React.ReactNode }) {
+  return <><div className="mb-5"><h2 className="text-2xl font-semibold">{title}</h2><p className="mt-1 text-sm text-gray-500">{description}</p></div><div className="mb-4 flex gap-2"><input value={inputValue} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && onAdd()} placeholder={`Nome de ${title.toLowerCase()}...`} className={`flex-1 ${inputClass}`} /><button onClick={onAdd} className="rounded-xl bg-[#171717] px-4 py-2.5 text-sm font-semibold text-white">{addLabel}</button></div><div className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm">{children}</div></>;
 }
