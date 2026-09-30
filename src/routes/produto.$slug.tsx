@@ -4,8 +4,6 @@ import type { Catalog, CatalogAddonGroup, CatalogProduct } from "@/lib/catalog";
 import { loadRemoteCatalog, readLocalCatalog } from "@/lib/catalog";
 import { productMatchesSlug } from "@/lib/product-slug";
 
-const whatsapp = "5547988776543";
-
 export const Route = createFileRoute("/produto/$slug")({
   component: ProductPage,
 });
@@ -199,7 +197,6 @@ function ProductPage() {
                   )}
                 </div>
               )}
-              <a href={`https://wa.me/${whatsapp}?text=${message}`} target="_blank" rel="noreferrer" className="mt-3 flex w-full items-center justify-center rounded-xl border border-black/15 bg-white px-5 py-3.5 text-sm font-semibold hover:bg-gray-50">Pedir diretamente pelo WhatsApp</a>
             </div>
           </div>
         </section>
