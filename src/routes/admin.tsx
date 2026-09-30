@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { loadRemoteCatalog, readLocalCatalog, saveLocalCatalog, type Catalog, type Product, type Category, type AddonGroup } from "@/lib/catalog";
+import { loadRemoteCatalog, readLocalCatalog, saveLocalCatalog, saveRemoteCatalog, type Catalog, type Product, type Category, type AddonGroup } from "@/lib/catalog";
 
 type Product = {
   id: string;
@@ -64,7 +64,7 @@ function AdminPage() {
 
   function commit(next: Catalog, message = "Alterações salvas.") {
     setCatalog(next);
-    saveLocalCatalog(next);
+    saveLocalCatalog(next);\n    void saveRemoteCatalog(next);
     setNotice(message);
     window.setTimeout(() => setNotice(""), 2200);
   }
