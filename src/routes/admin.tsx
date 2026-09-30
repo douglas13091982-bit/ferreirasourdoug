@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import type { Session } from "@supabase/supabase-js";
 import { loadRemoteCatalog, readLocalCatalog, saveLocalCatalog, saveRemoteCatalog } from "@/lib/catalog";
+import { supabase } from "@/lib/supabase";
 
 type Product = {
   id: string;
@@ -56,7 +58,7 @@ function AdminPage() {
   const [section, setSection] = useState<"produtos" | "categorias" | "adicionais">("produtos");
   const [query, setQuery] = useState("");
   const [editing, setEditing] = useState<Product | null>(null);
-  const [notice, setNotice] = useState("");
+  const [notice, setNotice] = useState("");\n  const [session, setSession] = useState<Session | null>(null);\n  const [email, setEmail] = useState("");\n  const [password, setPassword] = useState("");\n  const [authError, setAuthError] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -121,7 +123,7 @@ function AdminPage() {
     });
   }
 
-  function exportCatalog() {
+  async function migrateInitialCatalog() {\n    if (!supabase || !session) {\n      setNotice("Entre no painel com uma conta administrativa antes de migrar.");\n      return;\n    }\n    if (!window.confirm("Migrar o catálogo original para o Supabase? Os dados atuais do banco serão complementados/atualizados pelos itens do catálogo original.")) return;\n    const { INITIAL_CATALOG } = await import("@/lib/catalog-seed");\n    const result = await saveRemoteCatalog(INITIAL_CATALOG);\n    if (!result.ok || !result.catalog) { setNotice(result.error ?? "Falha na migração."); return; }\n    setCatalog(result.catalog);\n    saveLocalCatalog(result.catalog);\n    setNotice("Catálogo original migrado para o Supabase.");\n    window.setTimeout(() => setNotice(""), 3500);\n  }\n\n  function exportCatalog() {
     const blob = new Blob([JSON.stringify(catalog, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
