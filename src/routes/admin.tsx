@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 const STORAGE_KEY = "fs_catalog_v1";
 
@@ -245,11 +245,11 @@ function AdminPage() {
   );
 }
 
-function NavButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+function NavButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
   return <button onClick={onClick} className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-medium ${active ? "bg-[#171717] text-white" : "hover:bg-gray-50"}`}>{children}</button>;
 }
 
-function Badge({ children }: { children: React.ReactNode }) {
+function Badge({ children }: { children: ReactNode }) {
   return <span className="rounded-full bg-black/5 px-2 py-0.5 text-xs">{children}</span>;
 }
 
@@ -282,7 +282,7 @@ function ProductEditor({ product, catalog, onCancel, onSave }: { product: Produc
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Nome"><input value={form.n} onChange={(e) => set("n", e.target.value)} className={inputClass} /></Field>
           <Field label="Categoria"><select value={form.c} onChange={(e) => set("c", e.target.value)} className={input}><option value="">Sem categoria</option>{catalog.cats.map((c) => <option key={c.id} value={c.id}>{c.n}</option>)}</select></Field>
-          <Field label="Preço"><input type="number" step="0.01" value={form.p ?? ""} onChange={(e) => set("p", e.target.value === "" ? null : Number(e.target.value))} className={input} /></Field>
+          <Field label="Preço"><input type="number" step="0.01" value={form.p ?? ""} onChange={(e) => set("p", e.target.value === "" ? null : Number(e.target.value))} className={inputClass} /></Field>
           <Field label="Unidade"><input value={form.u} onChange={(e) => set("u", e.target.value)} placeholder="/un, /100g..." className={input} /></Field>
           <div className="sm:col-span-2"><Field label="Descrição"><textarea value={form.d} onChange={(e) => set("d", e.target.value)} rows={4} className={input} /></Field></div>
           <div className="sm:col-span-2"><Field label="Imagem"><input type="file" accept="image/*" onChange={(e) => readImage(e.target.files?.[0])} className="block w-full rounded-xl border border-black/10 p-3 text-sm" />{preview && <img src={preview} alt="" className="mt-3 h-32 w-32 rounded-2xl object-cover" />}</Field></div>
@@ -296,7 +296,7 @@ function ProductEditor({ product, catalog, onCancel, onSave }: { product: Produc
 
 const inputClass = "mt-1 w-full rounded-xl border border-black/10 bg-gray-50 px-3.5 py-3 text-sm outline-none focus:border-black/30";
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return <label className="block text-sm font-medium">{label}{children}</label>;
 }
 
@@ -327,9 +327,9 @@ function AddonManager({ catalog, commit }: { catalog: Catalog; commit: (next: Ca
     const prods = catalog.prods.map((p) => ({ ...p, a: p.a.filter((groupId) => groupId !== id) }));
     commit({ ...catalog, prods, groups: catalog.groups.filter((g) => g.id !== id) }, "Grupo excluído.");
   }
-  return <Manager title="Adicionais" description="Gerencie grupos de complementos usados pelos produtos." input={name} setInput={setName} onAdd={add} addLabel="Novo grupo">{catalog.groups.map((g) => <div key={g.id} className="flex items-center justify-between border-b border-black/5 px-5 py-4 last:border-0"><div><p className="font-medium">{g.n}</p><p className="text-xs text-gray-500">{g.items.length} opções</p></div><button onClick={() => remove(g.id)} className="text-sm text-red-600">Excluir</button></div>)}</Manager>;
+  return <Manager title="Adicionais" description="Gerencie grupos de complementos usados pelos produtos." inputValue={name} setInput={setName} onAdd={add} addLabel="Novo grupo">{catalog.groups.map((g) => <div key={g.id} className="flex items-center justify-between border-b border-black/5 px-5 py-4 last:border-0"><div><p className="font-medium">{g.n}</p><p className="text-xs text-gray-500">{g.items.length} opções</p></div><button onClick={() => remove(g.id)} className="text-sm text-red-600">Excluir</button></div>)}</Manager>;
 }
 
-function Manager({ title, description, inputValue, setInput, onAdd, addLabel, children }: { title: string; description: string; inputValue: string; setInput: (value: string) => void; onAdd: () => void; addLabel: string; children: React.ReactNode }) {
+function Manager({ title, description, inputValue, setInput, onAdd, addLabel, children }: { title: string; description: string; inputValue: string; setInput: (value: string) => void; onAdd: () => void; addLabel: string; children: ReactNode }) {
   return <><div className="mb-5"><h2 className="text-2xl font-semibold">{title}</h2><p className="mt-1 text-sm text-gray-500">{description}</p></div><div className="mb-4 flex gap-2"><input value={inputValue} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && onAdd()} placeholder={`Nome de ${title.toLowerCase()}...`} className={`flex-1 ${inputClass}`} /><button onClick={onAdd} className="rounded-xl bg-[#171717] px-4 py-2.5 text-sm font-semibold text-white">{addLabel}</button></div><div className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm">{children}</div></>;
 }
