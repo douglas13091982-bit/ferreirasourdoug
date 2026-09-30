@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useRef } from "react";
+import { loadRemoteCatalog } from "@/lib/catalog";
 
 const title =
   "Ferreira Sourdough – Pães, Pizza e Charcutaria Artesanal em Joinville";
