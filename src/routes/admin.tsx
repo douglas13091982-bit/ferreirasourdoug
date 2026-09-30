@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { loadRemoteCatalog, readLocalCatalog, saveLocalCatalog, type Catalog, type Product, type Category, type AddonGroup } from "@/lib/catalog";
 
 const STORAGE_KEY = "fs_catalog_v1";
 
@@ -43,25 +44,6 @@ export const Route = createFileRoute("/admin")({
   component: AdminPage,
 });
 
-function readCatalog(): Catalog {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return emptyCatalog;
-    const parsed = JSON.parse(raw);
-    return {
-      prods: Array.isArray(parsed.prods) ? parsed.prods : [],
-      cats: Array.isArray(parsed.cats) ? parsed.cats : [],
-      groups: Array.isArray(parsed.groups) ? parsed.groups : [],
-    };
-  } catch {
-    return emptyCatalog;
-  }
-}
-
-function saveCatalog(catalog: Catalog) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(catalog));
-}
-
 function makeId(prefix: string) {
   return prefix + "_" + Math.random().toString(36).slice(2, 9);
 }
@@ -84,7 +66,7 @@ function AdminPage() {
 
   function commit(next: Catalog, message = "Alterações salvas.") {
     setCatalog(next);
-    saveCatalog(next);
+    saveLocalCatalog(next);
     setNotice(message);
     window.setTimeout(() => setNotice(""), 2200);
   }
