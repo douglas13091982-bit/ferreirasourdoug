@@ -126,37 +126,37 @@ function ProductPage() {
 
   return (
     <main className="min-h-screen bg-[#f7f7f5] text-[#171717]">
-      <div className="mx-auto max-w-6xl px-4 py-5 sm:px-6 sm:py-8">
-        <Link to="/" className="inline-flex items-center gap-2 rounded-xl border border-black/10 bg-white px-4 py-2.5 text-sm font-medium shadow-sm hover:bg-gray-50">
+      <div className="mx-auto max-w-6xl px-3 py-3 sm:px-6 sm:py-8">
+        <Link to="/" className="mb-1 inline-flex min-h-11 items-center gap-2 rounded-xl border border-black/10 bg-white px-4 py-2.5 text-sm font-medium shadow-sm hover:bg-gray-50">
           ← Voltar ao cardápio
         </Link>
 
-        <section className="mt-5 overflow-hidden rounded-3xl border border-black/10 bg-white shadow-sm">
+        <section className="mt-3 overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm sm:mt-5 sm:rounded-3xl">
           <div className="grid lg:grid-cols-2">
-            <div className="min-h-[300px] bg-gray-100 lg:min-h-[560px]">
+            <div className="min-h-0 bg-gray-100 lg:min-h-[560px]">
               {product.i ? (
-                <img src={product.i} alt={product.n} className="h-full min-h-[300px] w-full object-cover lg:min-h-[560px]" />
+                <img src={product.i} alt={product.n} className="aspect-[4/3] h-auto w-full object-cover sm:aspect-[16/10] lg:aspect-auto lg:h-full lg:min-h-[560px]" />
               ) : (
-                <div className="flex h-full min-h-[300px] items-center justify-center text-sm text-gray-400 lg:min-h-[560px]">Sem imagem</div>
+                <div className="flex aspect-[4/3] items-center justify-center text-sm text-gray-400 sm:aspect-[16/10] lg:aspect-auto lg:h-full lg:min-h-[560px]">Sem imagem</div>
               )}
             </div>
 
-            <div className="flex flex-col p-6 sm:p-9 lg:p-12">
+            <div className="flex flex-col p-4 sm:p-9 lg:p-12">
               {category && <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">{category}</p>}
-              <h1 className="mt-3 text-3xl font-semibold leading-tight sm:text-4xl">{product.n}</h1>
-              {product.d && <p className="mt-5 text-base leading-7 text-gray-600">{product.d}</p>}
+              <h1 className="mt-2 text-2xl font-semibold leading-tight sm:mt-3 sm:text-4xl">{product.n}</h1>
+              {product.d && <p className="mt-3 text-sm leading-6 text-gray-600 sm:mt-5 sm:text-base sm:leading-7">{product.d}</p>}
 
-              <div className="mt-7">
-                <span className="text-3xl font-semibold">{money(product.p)}</span>
+              <div className="mt-5 sm:mt-7">
+                <span className="text-2xl font-semibold sm:text-3xl">{money(product.p)}</span>
                 {product.p !== null && product.u && <span className="ml-2 text-sm text-gray-500">{product.u}</span>}
               </div>
 
               {product.p !== null && addonGroups.length > 0 && (
-                <div className="mt-8 space-y-4 border-t border-black/10 pt-6">
+                <div className="mt-6 space-y-3 border-t border-black/10 pt-5 sm:mt-8 sm:space-y-4 sm:pt-6">
                   <div><h2 className="text-lg font-semibold">Personalize seu produto</h2><p className="mt-1 text-sm text-gray-500">Escolha os adicionais que deseja.</p></div>
                   {addonGroups.map((group) => {
                     const selectedItems = selected[group.id] ?? [];
-                    return <fieldset key={group.id} className="rounded-2xl border border-black/10 p-4">
+                    return <fieldset key={group.id} className="rounded-2xl border border-black/10 p-3 sm:p-4">
                       <legend className="px-1 text-sm font-semibold">{group.n}</legend>
                       <p className="mb-3 text-xs text-gray-500">
                         {group.min ? `Escolha pelo menos ${group.min}` : "Opcional"}{group.max ? ` · até ${group.max}` : ""}
@@ -164,7 +164,7 @@ function ProductPage() {
                       <div className="space-y-2">
                         {group.items.filter((item) => item.on !== false).map((item) => {
                           const checked = selectedItems.includes(item.id);
-                          return <label key={item.id} className={`flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-3 ${checked ? "border-black bg-gray-50" : "border-black/10"}`}>
+                          return <label key={item.id} className={`flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border px-3 py-3 text-sm ${checked ? "border-black bg-gray-50" : "border-black/10"}`}>
                             <input type={group.max === 1 ? "radio" : "checkbox"} name={group.id} checked={checked} onChange={() => toggleAddon(group, item.id)} className="h-4 w-4" />
                             <span className="flex-1 text-sm">{item.n}</span>{item.p > 0 && <span className="text-sm font-medium">+ {money(item.p)}</span>}
                           </label>;
@@ -176,24 +176,24 @@ function ProductPage() {
               )}
 
               {product.p !== null && (
-                <div className="mt-auto pt-8">
+                <div className="mt-auto pt-6 sm:pt-8">
                   <div className="flex items-center justify-between rounded-2xl border border-black/10 bg-gray-50 p-3">
                     <span className="text-sm font-semibold">Quantidade</span>
                     <div className="flex items-center gap-4">
-                      <button type="button" onClick={() => setQuantity((v) => Math.max(1, v - 1))} className="h-10 w-10 rounded-xl border border-black/10 bg-white text-lg">−</button>
+                      <button type="button" aria-label="Diminuir quantidade" onClick={() => setQuantity((v) => Math.max(1, v - 1))} className="h-11 w-11 rounded-xl border border-black/10 bg-white text-lg">−</button>
                       <strong className="w-5 text-center">{quantity}</strong>
-                      <button type="button" onClick={() => setQuantity((v) => v + 1)} className="h-10 w-10 rounded-xl border border-black/10 bg-white text-lg">+</button>
+                      <button type="button" aria-label="Aumentar quantidade" onClick={() => setQuantity((v) => v + 1)} className="h-11 w-11 rounded-xl border border-black/10 bg-white text-lg">+</button>
                     </div>
                   </div>
                   {error && <p className="mt-3 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">{error}</p>}
-                  <div className="mt-5 flex items-end justify-between"><span className="text-sm text-gray-500">Total</span><strong className="text-3xl">{money(total)}</strong></div>
+                  <div className="mt-4 flex items-end justify-between"><span className="text-sm text-gray-500">Total</span><strong className="text-2xl sm:text-3xl">{money(total)}</strong></div>
                   {added ? (
                     <div className="mt-5 grid gap-3 sm:grid-cols-2">
                       <Link to="/" className="flex items-center justify-center rounded-xl bg-[#171717] px-5 py-3.5 text-sm font-semibold text-white">Continuar comprando</Link>
                       <button type="button" onClick={() => { localStorage.setItem("fs_open_cart_v1", "1"); window.location.href = "/#cardapio"; }} className="rounded-xl border border-black/15 bg-white px-5 py-3.5 text-sm font-semibold">Ver meu pedido</button>
                     </div>
                   ) : (
-                    <button type="button" onClick={addToCart} className="mt-5 flex w-full items-center justify-center rounded-xl bg-[#171717] px-5 py-3.5 text-sm font-semibold text-white hover:bg-black">Adicionar ao pedido · {money(total)}</button>
+                    <button type="button" onClick={addToCart} className="mt-4 flex min-h-12 w-full items-center justify-center rounded-xl bg-[#171717] px-5 py-3.5 text-sm font-semibold text-white hover:bg-black sm:mt-5">Adicionar ao pedido · {money(total)}</button>
                   )}
                 </div>
               )}
