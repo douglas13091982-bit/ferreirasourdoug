@@ -179,7 +179,8 @@ var P=function(id){return CAT.prods.filter(function(x){return x.id===id})[0]},G=
 function useCap(n){return (window.claude&&claude.use)?claude.use(n).catch(function(){return null}):Promise.resolve(null)}
 function loadAll(){try{var s=localStorage.getItem(KEY);if(s){var c=JSON.parse(s);if(c&&c.prods)CAT=c}}catch(e){}
  var pr=window.CatalogAPI?Promise.resolve(window.CatalogAPI.load()):useCap('db').then(function(db){return db?db.doc('catalog/main').get().then(function(d){return d.exists?JSON.parse(d.data().json):null}):null});
- return pr.then(function(c){if(c&&c.prods)CAT=c}).catch(function(){}).then(function(){tabs();grid()})}
+ return pr.then(function(c){if(c&&c.prods)CAT=c}).catch(function(){}).then(function(){consumePendingCart();tabs();grid()})}
+function consumePendingCart(){try{var raw=localStorage.getItem('fs_pending_cart_v1');if(!raw)return;var p=JSON.parse(raw),items=Array.isArray(p.items)?p.items:[];items.forEach(function(item){if(item&&item.pid&&P(item.pid))addLine(item.pid,Array.isArray(item.ex)?item.ex:[])});localStorage.removeItem('fs_pending_cart_v1')}catch(e){}}
 function persist(){try{localStorage.setItem(KEY,JSON.stringify(CAT))}catch(e){}
  if(window.CatalogAPI&&window.CatalogAPI.save)return Promise.resolve(window.CatalogAPI.save(CAT)).then(function(){ST('Salvo no seu servidor ✓')}).catch(function(){ST('Erro ao salvar no servidor')});
  return useCap('db').then(function(db){if(!db){ST('Salvo apenas neste navegador');return}return db.doc('catalog/main').set({json:JSON.stringify(CAT)}).then(function(){ST('Salvo na nuvem ✓')})}).catch(function(){ST('Salvo apenas neste navegador')})}
