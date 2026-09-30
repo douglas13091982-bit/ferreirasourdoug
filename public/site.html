@@ -190,12 +190,13 @@ function tabs(){var e=document.querySelector('.tabs');e.innerHTML='';var cs=[{id
  cs.forEach(function(c){var b=document.createElement('button');b.textContent=c.n;b.setAttribute('role','tab');b.setAttribute('aria-selected',c.id===F);b.onclick=function(){F=c.id;tabs();grid()};e.appendChild(b)})}
 function cq(k){var l=L.filter(function(x){return x.k===k})[0];return l?l.q:0}
 function catName(id){var c=CAT.cats.filter(function(x){return x.id===id})[0];return c?c.n:''}
+function productSlug(name,id){var s=String(name||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,80)||'produto';return s+'-'+String(id).slice(0,8)}
 function grid(){var h='';active().filter(function(x){return F==='all'||x.c===F}).forEach(function(x){
  var gs=(x.a||[]).map(G).filter(Boolean),k=x.id+'|',act;
  if(x.p==null)act='<a class="btn" href="https://wa.me/'+WA+'?text='+encodeURIComponent('Olá! Quero saber o valor: '+x.n)+'">Consultar valor</a>';
  else if(gs.length)act='<button class="btn" data-o="'+x.id+'">Adicionar</button>';
  else act=cq(k)?'<span class="qty"><button data-km="'+k+'" aria-label="Menos">−</button><b>'+cq(k)+'</b><button data-kp="'+k+'" aria-label="Mais">+</button></span>':'<button class="btn" data-add="'+x.id+'">Adicionar</button>';
- h+='<article class="card">'+(x.i?'<img src="'+esc(x.i)+'" alt="'+esc(x.n)+'">':'<div class="np"></div>')+'<div class="bd"><span class="cat">'+esc(catName(x.c))+'</span><h3>'+esc(x.n)+'</h3><p>'+esc(x.d)+'</p><div class="pr"><span>'+(x.p==null?'<small>Sob consulta</small>':'<span class="v">'+R(x.p)+'</span><small> '+esc(x.u||'')+'</small>')+'</span>'+act+'</div></div></article>'});
+ h+='<article class="card">'+(x.i?'<a href="/produto/'+productSlug(x.n,x.id)+'" target="_top" aria-label="Ver '+esc(x.n)+'"><img src="'+esc(x.i)+'" alt="'+esc(x.n)+'"></a>':'<a href="/produto/'+productSlug(x.n,x.id)+'" target="_top" class="np" aria-label="Ver '+esc(x.n)+'"></a>')+'<div class="bd"><span class="cat">'+esc(catName(x.c))+'</span><h3><a href="/produto/'+productSlug(x.n,x.id)+'" target="_top" style="text-decoration:none;color:inherit">'+esc(x.n)+'</a></h3><p>'+esc(x.d)+'</p><div class="pr"><span>'+(x.p==null?'<small>Sob consulta</small>':'<span class="v">'+R(x.p)+'</span><small> '+esc(x.u||'')+'</small>')+'</span>'+act+'</div><a href="/produto/'+productSlug(x.n,x.id)+'" target="_top" style="display:inline-block;margin-top:8px;font-size:.82rem;color:inherit;text-decoration:underline;text-underline-offset:3px">Ver detalhes</a></div></article>'});
  $('mg').innerHTML=h||'<p style="grid-column:1/-1;text-align:center;color:var(--mute)">Nenhum produto disponível.</p>';sum()}
 function uprice(l){var x=P(l.pid);return (x?x.p:0)+l.ex.reduce(function(s,e){return s+e.p},0)}
 function tot(){var n=0,t=0;L.forEach(function(l){n+=l.q;t+=l.q*uprice(l)});return[n,t]}
