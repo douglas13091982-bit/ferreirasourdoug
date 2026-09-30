@@ -95,6 +95,45 @@ export async function loadRemoteCatalog(): Promise<Catalog | null> {
   };
 }
 
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function newUuid() {
+  return typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : "00000000-0000-4000-8000-" + Math.random().toString(16).slice(2).padEnd(12, "0").slice(0, 12);
+}
+
+export function normalizeCatalogForRemote(catalog: Catalog): Catalog {
+  const categoryMap = new Map<string, string>();
+  const groupMap = new Map<string, string>();
+  const itemMap = new Map<string, string>();
+
+  const cats = catalog.cats.map(c => {
+    const id = isUuid(c.id) ? c.id : newUuid();
+    categoryMap.set(c.id, id);
+    return { ...c, id };
+  });
+  const groups = catalog.groups.map(g => {
+    const id = isUuid(g.id) ? g.id : newUuid();
+    groupMap.set(g.id, id);
+    return { ...g, id, items: g.items.map(item => {
+      const itemId = isUuid(item.id) ? item.id : newUuid();
+      itemMap.set(item.id, itemId);
+      return { ...item, id: itemId };
+    }) };
+  });
+  const prods = catalog.prods.map(p => ({
+    ...p,
+    id: isUuid(p.id) ? p.id : newUuid(),
+    c: categoryMap.get(p.c) ?? p.c,
+    a: (p.a ?? []).map(id => groupMap.get(id) ?? id),
+  }));
+
+  return { cats, groups, prods };
+}
+
 export async function saveRemoteCatalog(catalog: Catalog): Promise<{ ok: boolean; error?: string }> {
   if (!supabase) return { ok: false, error: "Supabase não configurado." };
 
