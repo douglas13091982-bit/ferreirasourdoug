@@ -195,7 +195,7 @@ function ProductPage() {
                   {added ? (
                     <div className="mt-5 grid gap-3 sm:grid-cols-2">
                       <Link to="/" className="flex items-center justify-center rounded-xl bg-[#171717] px-5 py-3.5 text-sm font-semibold text-white">Continuar comprando</Link>
-                      <button type="button" onClick={() => { window.location.href = "/#pedido"; }} className="rounded-xl border border-black/15 bg-white px-5 py-3.5 text-sm font-semibold">Ver meu pedido</button>
+                      <button type="button" onClick={() => { localStorage.setItem("fs_open_cart_v1", "1"); window.location.href = "/#cardapio"; }} className="rounded-xl border border-black/15 bg-white px-5 py-3.5 text-sm font-semibold">Ver meu pedido</button>
                     </div>
                   ) : (
                     <button type="button" onClick={addToCart} className="mt-5 flex w-full items-center justify-center rounded-xl bg-[#171717] px-5 py-3.5 text-sm font-semibold text-white hover:bg-black">Adicionar ao pedido · {money(total)}</button>
