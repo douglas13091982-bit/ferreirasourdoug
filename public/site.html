@@ -105,12 +105,15 @@ body.has .bar{display:flex}body.has .fab{display:none}
   nav::-webkit-scrollbar{display:none}
   nav a{font-size:13px;white-space:nowrap;padding:9px 7px}
 
-  /* Capa mobile: composição simples, sem alterar o HTML */
-  .hero{min-height:300px}
+  /* Capa mobile: imagem em cima e texto em área verde abaixo */
+  .hero{
+    min-height:420px;
+    background:var(--g);
+  }
   .hero .w{
-    min-height:300px;
-    padding:38px 20px 34px;
-    align-items:flex-end;
+    min-height:420px;
+    padding:215px 20px 34px;
+    align-items:flex-start;
   }
   .hero .w>div{
     width:100%;
@@ -147,7 +150,11 @@ body.has .bar{display:flex}body.has .fab{display:none}
 }
 @media (max-width: 480px){
   body{font-size:15px}
-  .hero .w{min-height:270px}
+  .hero{min-height:400px}
+  .hero .w{
+    min-height:400px;
+    padding-top:205px;
+  }
 }
 
 /* Reviews and footer mobile */
