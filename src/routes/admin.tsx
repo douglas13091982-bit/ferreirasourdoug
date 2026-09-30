@@ -59,12 +59,19 @@ function AdminPage() {
   const [notice, setNotice] = useState("");
 
   useEffect(() => {
-    setCatalog(readCatalog());
+    let cancelled = false;
+    (async () => {
+      const remote = await loadRemoteCatalog();
+      if (!cancelled && remote && (remote.prods.length || remote.cats.length || remote.groups.length)) setCatalog(remote);
+      else if (!cancelled) setCatalog(readLocalCatalog());
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   function commit(next: Catalog, message = "Alterações salvas.") {
     setCatalog(next);
-    saveLocalCatalog(next);\n    void saveRemoteCatalog(next);
+    saveLocalCatalog(next);
+    void saveRemoteCatalog(next);
     setNotice(message);
     window.setTimeout(() => setNotice(""), 2200);
   }
