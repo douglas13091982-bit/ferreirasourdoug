@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { loadRemoteCatalog, readLocalCatalog, saveLocalCatalog, saveRemoteCatalog, type Catalog, type Product, type Category, type AddonGroup } from "@/lib/catalog";
+import { loadRemoteCatalog, readLocalCatalog, saveLocalCatalog, saveRemoteCatalog } from "@/lib/catalog";
 
 type Product = {
   id: string;
