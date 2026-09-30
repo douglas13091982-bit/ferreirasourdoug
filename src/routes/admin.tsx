@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { loadRemoteCatalog, readLocalCatalog, saveLocalCatalog, saveRemoteCatalog } from "@/lib/catalog";
+import { productPath } from "@/lib/product-slug";
 import { supabase } from "@/lib/supabase";
 
 type Product = {
@@ -242,6 +243,7 @@ function CatalogAdminPage() {
                     <div className="font-semibold">{money(p.p)}</div>
                     <div className="flex items-center gap-2">
                       <button onClick={() => toggleProduct(p.id)} className={`rounded-full px-2.5 py-1 text-xs font-semibold ${p.on ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500"}`}>{p.on ? "Ativo" : "Oculto"}</button>
+                      <Link to={productPath(p.n, p.id)} target="_blank" className="rounded-lg border border-black/10 px-2.5 py-1 text-xs font-medium hover:bg-gray-50">Ver página</Link>
                       <button onClick={() => setEditing(p)} className="rounded-lg border border-black/10 px-2.5 py-1 text-xs font-medium hover:bg-gray-50">Editar</button>
                       <button onClick={() => deleteProduct(p.id)} className="rounded-lg border border-red-100 px-2.5 py-1 text-xs font-medium text-red-600 hover:bg-red-50">Excluir</button>
                     </div>
