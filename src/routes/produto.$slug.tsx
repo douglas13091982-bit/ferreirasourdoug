@@ -125,9 +125,6 @@ function ProductPage() {
     }
   }
 
-  const message = encodeURIComponent(
-    `Olá, Ferreira Sourdough! Gostaria de pedir ${quantity}x ${product.n} — total ${money(total)}.`,
-  );
 
   return (
     <main className="min-h-screen bg-[#f7f7f5] text-[#171717]">
