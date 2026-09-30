@@ -264,16 +264,25 @@ function AdminAuthGate({ children }: { children: ReactNode }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [checkingAdmin, setCheckingAdmin] = useState(false);
+  const [authorized, setAuthorized] = useState(false);
 
   useEffect(() => {
     if (!supabase) { setLoading(false); return; }
     let active = true;
+    async function syncSession(next: Session | null) {
+      if (!active) return;
+      setSession(next);
+      if (!next) { setAuthorized(false); return; }
+      const { data: admin } = await supabase.from("catalog_admins").select("user_id").eq("user_id", next.user.id).maybeSingle();
+      if (active) {
+        setAuthorized(Boolean(admin));
+        if (!admin) await supabase.auth.signOut();
+      }
+    }
     supabase.auth.getSession().then(({ data }) => {
-      if (active) { setSession(data.session); setLoading(false); }
+      void syncSession(data.session).finally(() => { if (active) setLoading(false); });
     });
-    const { data } = supabase.auth.onAuthStateChange((_event, next) => {
-      if (active) setSession(next);
-    });
+    const { data } = supabase.auth.onAuthStateChange((_event, next) => { void syncSession(next); });
     return () => { active = false; data.subscription.unsubscribe(); };
   }, []);
 
@@ -286,7 +295,10 @@ function AdminAuthGate({ children }: { children: ReactNode }) {
     const { data: admin, error: adminError } = await supabase.from("catalog_admins").select("user_id").eq("user_id", data.user.id).maybeSingle();
     if (adminError || !admin) {
       await supabase.auth.signOut();
+      setAuthorized(false);
       setError("Esta conta não está autorizada como administrador.");
+    } else {
+      setAuthorized(true);
     }
     setCheckingAdmin(false);
   }
@@ -295,7 +307,7 @@ function AdminAuthGate({ children }: { children: ReactNode }) {
 
   if (loading) return <div className="flex min-h-screen items-center justify-center bg-[#f6f7f9] text-sm text-gray-500">Carregando acesso seguro...</div>;
   if (!supabase) return <AuthMessage title="Painel administrativo" message="O Supabase ainda não está configurado neste ambiente. Defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no ambiente de publicação para ativar o login." />;
-  if (!session) return (
+  if (!session || !authorized) return (
     <div className="flex min-h-screen items-center justify-center bg-[#f6f7f9] px-4 py-10">
       <form onSubmit={login} className="w-full max-w-md rounded-3xl border border-black/10 bg-white p-7 shadow-xl sm:p-9">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Ferreira Sourdough</p>
