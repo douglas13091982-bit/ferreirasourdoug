@@ -51,10 +51,10 @@ export function saveLocalCatalog(catalog: Catalog) {
 
 export async function loadRemoteCatalog(includeInactive = false): Promise<Catalog | null> {
   const [cats, products, groups, items, links] = await Promise.all([
-    supabase.from("catalog_categories").select("id,name").order("sort_order").then(r => r),
-    supabase.from("catalog_products").select("id,category_id,name,description,price,unit,image_url,active").order("sort_order").then(r => r),
-    supabase.from("catalog_addon_groups").select("id,name,min_select,max_select").order("sort_order").then(r => r),
-    supabase.from("catalog_addon_items").select("id,group_id,name,price,active").order("sort_order").then(r => r),
+    supabase.from("catalog_categories").select("id,name,active").order("sort_order"),
+    supabase.from("catalog_products").select("id,category_id,name,description,price,unit,image_url,active").order("sort_order"),
+    supabase.from("catalog_addon_groups").select("id,name,min_select,max_select,active").order("sort_order"),
+    supabase.from("catalog_addon_items").select("id,group_id,name,price,active").order("sort_order"),
     supabase.from("catalog_product_addon_groups").select("product_id,group_id"),
   ]);
 
