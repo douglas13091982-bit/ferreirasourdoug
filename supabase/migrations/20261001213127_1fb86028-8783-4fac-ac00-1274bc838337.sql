@@ -1,0 +1,8 @@
+CREATE TABLE public.store_delivery_settings (id boolean primary key default true, base_fee numeric(10,2) not null default 0, price_per_km numeric(10,2) not null default 2.50, minimum_fee numeric(10,2) not null default 7.00, max_delivery_km numeric(10,2) not null default 20.00, origin_address text not null default 'Rua Frederico Hubner, 37, América, Joinville - SC, 89204-280, Brasil', mapbox_token text not null default '', active boolean not null default true, created_at timestamptz not null default now(), updated_at timestamptz not null default now());
+GRANT SELECT ON public.store_delivery_settings TO anon; GRANT SELECT, INSERT, UPDATE, DELETE ON public.store_delivery_settings TO authenticated; GRANT ALL ON public.store_delivery_settings TO service_role;
+ALTER TABLE public.store_delivery_settings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "public can read delivery settings" ON public.store_delivery_settings FOR SELECT TO anon, authenticated USING (active = true);
+CREATE POLICY "catalog admins manage delivery settings" ON public.store_delivery_settings FOR ALL TO authenticated USING (public.is_catalog_admin()) WITH CHECK (public.is_catalog_admin());
+INSERT INTO public.store_delivery_settings (id) VALUES (true);
+CREATE OR REPLACE FUNCTION public.touch_delivery_settings() RETURNS trigger LANGUAGE plpgsql SET search_path = public AS $$ BEGIN NEW.updated_at = now(); RETURN NEW; END $$;
+CREATE TRIGGER touch_delivery_settings BEFORE UPDATE ON public.store_delivery_settings FOR EACH ROW EXECUTE FUNCTION public.touch_delivery_settings();

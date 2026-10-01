@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { loadRemoteCatalog, readLocalCatalog, saveLocalCatalog, saveRemoteCatalog } from "@/lib/catalog";
+import { loadRemoteCatalog, saveRemoteCatalog } from "@/lib/catalog";
 import { productPath } from "@/lib/product-slug";
 import { supabase } from "@/lib/supabase";
 
@@ -40,6 +40,10 @@ export const Route = createFileRoute("/admin")({
     meta: [
       { title: "Administração | Ferreira Sourdough" },
       { name: "description", content: "Painel administrativo do catálogo Ferreira Sourdough." },
+      { property: "og:title", content: "Administração | Ferreira Sourdough" },
+      { property: "og:description", content: "Painel administrativo do catálogo Ferreira Sourdough." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: AdminPage,
@@ -64,32 +68,32 @@ function CatalogAdminPage() {
   const [query, setQuery] = useState("");
   const [editing, setEditing] = useState<Product | null>(null);
   const [notice, setNotice] = useState("");
-  const [session, setSession] = useState<Session | null>(null);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [authError, setAuthError] = useState("");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const remote = await loadRemoteCatalog();
-      if (!cancelled && remote && (remote.prods.length || remote.cats.length || remote.groups.length)) setCatalog(remote);
-      else if (!cancelled) setCatalog(readLocalCatalog());
+      const remote = await loadRemoteCatalog(true);
+      if (!cancelled && remote) setCatalog(remote);
+      else if (!cancelled) setNotice("Não foi possível carregar o catálogo publicado. Tente novamente.");
     })();
     return () => { cancelled = true; };
   }, []);
 
-  function commit(next: Catalog, message = "Alterações salvas.") {
-    setCatalog(next);
-    saveLocalCatalog(next);
-    void saveRemoteCatalog(next).then((result) => {
+  async function commit(next: Catalog, message = "Alterações salvas.") {
+    if (saving) return;
+    setSaving(true);
+    try {
+      const result = await saveRemoteCatalog(next);
       if (result.ok && result.catalog) {
         setCatalog(result.catalog);
-        saveLocalCatalog(result.catalog);
+        setNotice(message);
+      } else {
+        setNotice(`Não foi possível salvar: ${result.error ?? "tente novamente."}`);
       }
-    });
-    setNotice(message);
-    window.setTimeout(() => setNotice(""), 2200);
+    } finally {
+      setSaving(false);
+    }
   }
 
   const filteredProducts = useMemo(() => {
@@ -138,17 +142,15 @@ function CatalogAdminPage() {
   }
 
   async function migrateInitialCatalog() {
-    if (!supabase || !session) {
-      setNotice("Entre no painel com uma conta administrativa antes de migrar.");
-      return;
-    }
-    if (!window.confirm("Migrar o catálogo original para o Supabase? Os dados atuais do banco serão complementados/atualizados pelos itens do catálogo original.")) return;
+    if (saving) return;
+    if (!window.confirm("Substituir o catálogo publicado pelo catálogo original? Exporte uma cópia antes se houver alterações a preservar.")) return;
+    setSaving(true);
     const { INITIAL_CATALOG } = await import("@/lib/catalog-seed");
     const result = await saveRemoteCatalog(INITIAL_CATALOG);
+    setSaving(false);
     if (!result.ok || !result.catalog) { setNotice(result.error ?? "Falha na migração."); return; }
     setCatalog(result.catalog);
-    saveLocalCatalog(result.catalog);
-    setNotice("Catálogo original migrado para o Supabase.");
+    setNotice("Catálogo original publicado.");
     window.setTimeout(() => setNotice(""), 3500);
   }
 
@@ -191,6 +193,7 @@ function CatalogAdminPage() {
           <NavButton active={section === "adicionais"} onClick={() => setSection("adicionais")}>Adicionais <Badge>{catalog.groups.length}</Badge></NavButton>
           <div className="my-3 border-t border-black/5" />
           <button onClick={exportCatalog} className="w-full rounded-xl px-3 py-2.5 text-left text-sm font-medium hover:bg-gray-50">Exportar catálogo</button>
+          <button onClick={migrateInitialCatalog} disabled={saving} className="w-full rounded-xl px-3 py-2.5 text-left text-sm font-medium hover:bg-gray-50 disabled:opacity-50">Restaurar catálogo original</button>
           <label className="block cursor-pointer rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-gray-50">Importar catálogo<input type="file" accept=".json,application/json" className="hidden" onChange={(e) => e.target.files?.[0] && importCatalog(e.target.files[0])} /></label>
         </nav>
         <div className="border-t border-black/10 p-3">
@@ -205,7 +208,7 @@ function CatalogAdminPage() {
             <h1 className="text-lg font-semibold lg:text-xl">Administração do catálogo</h1>
           </div>
           <div className="flex items-center gap-2">
-            {notice && <span className="hidden rounded-full bg-green-50 px-3 py-1.5 text-xs font-medium text-green-700 sm:block">{notice}</span>}
+            {notice && <span role="status" className="max-w-xs text-xs font-medium text-gray-700">{notice}</span>}
             <Link to="/" className="rounded-lg border border-black/10 bg-white px-3 py-2 text-sm font-medium hover:bg-gray-50">Ver site</Link>
           </div>
         </div>
@@ -248,7 +251,7 @@ function CatalogAdminPage() {
                     <div className="font-semibold">{money(p.p)}</div>
                     <div className="flex items-center gap-2">
                       <button onClick={() => toggleProduct(p.id)} className={`rounded-full px-2.5 py-1 text-xs font-semibold ${p.on ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500"}`}>{p.on ? "Ativo" : "Oculto"}</button>
-                      <Link to={productPath(p.n, p.id)} target="_blank" className="rounded-lg border border-black/10 px-2.5 py-1 text-xs font-medium hover:bg-gray-50">Ver página</Link>
+                      {p.on && <Link to={productPath(p.n, p.id)} target="_blank" className="rounded-lg border border-black/10 px-2.5 py-1 text-xs font-medium hover:bg-gray-50">Ver página</Link>}
                       <button onClick={() => setEditing(p)} className="rounded-lg border border-black/10 px-2.5 py-1 text-xs font-medium hover:bg-gray-50">Editar</button>
                       <button onClick={() => deleteProduct(p.id)} className="rounded-lg border border-red-100 px-2.5 py-1 text-xs font-medium text-red-600 hover:bg-red-50">Excluir</button>
                     </div>

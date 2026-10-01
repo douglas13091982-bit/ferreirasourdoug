@@ -49,14 +49,12 @@ export function saveLocalCatalog(catalog: Catalog) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(catalog));
 }
 
-export async function loadRemoteCatalog(): Promise<Catalog | null> {
-  if (!supabase) return null;
-
+export async function loadRemoteCatalog(includeInactive = false): Promise<Catalog | null> {
   const [cats, products, groups, items, links] = await Promise.all([
-    supabase.from("catalog_categories").select("id,name").eq("active", true).order("sort_order"),
-    supabase.from("catalog_products").select("id,category_id,name,description,price,unit,image_url,active").eq("active", true).order("sort_order"),
-    supabase.from("catalog_addon_groups").select("id,name,min_select,max_select").eq("active", true).order("sort_order"),
-    supabase.from("catalog_addon_items").select("id,group_id,name,price,active").eq("active", true).order("sort_order"),
+    supabase.from("catalog_categories").select("id,name,active").order("sort_order"),
+    supabase.from("catalog_products").select("id,category_id,name,description,price,unit,image_url,active").order("sort_order"),
+    supabase.from("catalog_addon_groups").select("id,name,min_select,max_select,active").order("sort_order"),
+    supabase.from("catalog_addon_items").select("id,group_id,name,price,active").order("sort_order"),
     supabase.from("catalog_product_addon_groups").select("product_id,group_id"),
   ]);
 
@@ -64,10 +62,10 @@ export async function loadRemoteCatalog(): Promise<Catalog | null> {
     return null;
   }
 
-  const catRows = cats.data ?? [];
-  const productRows = products.data ?? [];
-  const groupRows = groups.data ?? [];
-  const itemRows = items.data ?? [];
+  const catRows = (cats.data ?? []).filter(c => includeInactive || c.active);
+  const productRows = (products.data ?? []).filter(p => includeInactive || p.active);
+  const groupRows = (groups.data ?? []).filter(g => includeInactive || g.active);
+  const itemRows = (items.data ?? []).filter(i => includeInactive || i.active);
   const linkRows = links.data ?? [];
 
   return {
@@ -135,8 +133,6 @@ export function normalizeCatalogForRemote(catalog: Catalog): Catalog {
 }
 
 export async function saveRemoteCatalog(catalog: Catalog): Promise<{ ok: boolean; error?: string; catalog?: Catalog }> {
-  if (!supabase) return { ok: false, error: "Supabase não configurado." };
-
   const normalized = normalizeCatalogForRemote(catalog);
   const categoryRows = normalized.cats.map((c, index) => ({ id:c.id, name:c.n, sort_order:index, active:true }));
   const productRows = normalized.prods.map((p, index) => ({ id:p.id, category_id:p.c || null, name:p.n, description:p.d, price:p.p, unit:p.u, image_url:p.i, sort_order:index, active:p.on }));
@@ -144,20 +140,49 @@ export async function saveRemoteCatalog(catalog: Catalog): Promise<{ ok: boolean
   const itemRows = normalized.groups.flatMap(g => g.items.map((i,index) => ({ id:i.id, group_id:g.id, name:i.n, price:i.p, sort_order:index, active:i.on })));
   const linkRows = normalized.prods.flatMap(p => p.a.map(group_id => ({ product_id:p.id, group_id })));
 
-  const writes = await Promise.all([
-    supabase.from("catalog_categories").upsert(categoryRows),
-    supabase.from("catalog_products").upsert(productRows),
-    supabase.from("catalog_addon_groups").upsert(groupRows),
-    supabase.from("catalog_addon_items").upsert(itemRows),
-  ]);
-  const failed = writes.find(w => w.error);
-  if (failed?.error) return { ok:false, error:failed.error.message };
+  // Respect foreign keys: parents first on insert, children first on deletion.
+  for (const result of [
+    ...(categoryRows.length ? [await supabase.from("catalog_categories").upsert(categoryRows)] : []),
+    ...(groupRows.length ? [await supabase.from("catalog_addon_groups").upsert(groupRows)] : []),
+    ...(productRows.length ? [await supabase.from("catalog_products").upsert(productRows)] : []),
+    ...(itemRows.length ? [await supabase.from("catalog_addon_items").upsert(itemRows)] : []),
+  ]) if (result.error) return { ok: false, error: result.error.message };
 
-  const linkReset = await supabase.from("catalog_product_addon_groups").delete().neq("product_id", "");
-  if (linkReset.error) return { ok:false, error:linkReset.error.message };
-  if (linkRows.length) {
-    const inserted = await supabase.from("catalog_product_addon_groups").insert(linkRows);
-    if (inserted.error) return { ok:false, error:inserted.error.message };
+  const existing = await Promise.all([
+    supabase.from("catalog_product_addon_groups").select("product_id,group_id"),
+    supabase.from("catalog_addon_items").select("id"),
+    supabase.from("catalog_products").select("id"),
+    supabase.from("catalog_addon_groups").select("id"),
+    supabase.from("catalog_categories").select("id"),
+  ]);
+  for (const result of existing) if (result.error) return { ok: false, error: result.error.message };
+  const wantedLinks = new Set(linkRows.map(l => `${l.product_id}:${l.group_id}`));
+  for (const link of existing[0].data ?? []) {
+    if (!wantedLinks.has(`${link.product_id}:${link.group_id}`)) {
+      const { error } = await supabase.from("catalog_product_addon_groups").delete().eq("product_id", link.product_id).eq("group_id", link.group_id);
+      if (error) return { ok: false, error: error.message };
+    }
   }
+  if (linkRows.length) {
+    const { error } = await supabase.from("catalog_product_addon_groups").upsert(linkRows);
+    if (error) return { ok: false, error: error.message };
+  }
+  const removeMissing = async (table: "catalog_addon_items" | "catalog_products" | "catalog_addon_groups" | "catalog_categories", ids: string[], keep: Set<string>) => {
+    for (const id of ids) {
+      if (!keep.has(id)) {
+        const { error } = await supabase.from(table).delete().eq("id", id);
+        if (error) return error.message;
+      }
+    }
+    return null;
+  };
+  const deletions = [
+    await removeMissing("catalog_addon_items", (existing[1]?.data ?? []).map(r => r.id), new Set(itemRows.map(r => r.id))),
+    await removeMissing("catalog_products", (existing[2]?.data ?? []).map(r => r.id), new Set(productRows.map(r => r.id))),
+    await removeMissing("catalog_addon_groups", (existing[3]?.data ?? []).map(r => r.id), new Set(groupRows.map(r => r.id))),
+    await removeMissing("catalog_categories", (existing[4]?.data ?? []).map(r => r.id), new Set(categoryRows.map(r => r.id))),
+  ];
+  const deletionError = deletions.find(Boolean);
+  if (deletionError) return { ok: false, error: deletionError };
   return { ok:true, catalog: normalized };
 }
