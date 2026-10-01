@@ -54,6 +54,49 @@ function Index() {
     postCatalog();
   }, [catalog]);
 
+  useEffect(() => {
+    const onMessage = async (event: MessageEvent) => {
+      if (event.origin !== window.location.origin || !event.data) return;
+
+      if (event.data.type === "FERREIRA_DELIVERY_REQUEST") {
+        const { data } = await supabase
+          .from("store_delivery_settings")
+          .select("*")
+          .eq("id", true)
+          .maybeSingle();
+
+        iframeRef.current?.contentWindow?.postMessage(
+          { type: "FERREIRA_DELIVERY_CONFIG", delivery: data || undefined },
+          window.location.origin,
+        );
+        return;
+      }
+
+      if (event.data.type === "FERREIRA_DELIVERY_SAVE") {
+        const settings = event.data.settings;
+        if (!settings || typeof settings !== "object") return;
+
+        const { data, error } = await supabase
+          .from("store_delivery_settings")
+          .upsert(settings)
+          .select()
+          .single();
+
+        iframeRef.current?.contentWindow?.postMessage(
+          {
+            type: "FERREIRA_DELIVERY_SAVE_RESULT",
+            delivery: data || undefined,
+            error: error?.message || undefined,
+          },
+          window.location.origin,
+        );
+      }
+    };
+
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, []);
+
   return (
     <iframe
       ref={iframeRef}
