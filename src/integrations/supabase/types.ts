@@ -213,6 +213,45 @@ export type Database = {
           },
         ]
       }
+      store_delivery_settings: {
+        Row: {
+          active: boolean
+          base_fee: number
+          created_at: string
+          id: boolean
+          mapbox_token: string
+          max_delivery_km: number
+          minimum_fee: number
+          origin_address: string
+          price_per_km: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          base_fee?: number
+          created_at?: string
+          id?: boolean
+          mapbox_token?: string
+          max_delivery_km?: number
+          minimum_fee?: number
+          origin_address?: string
+          price_per_km?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          base_fee?: number
+          created_at?: string
+          id?: boolean
+          mapbox_token?: string
+          max_delivery_km?: number
+          minimum_fee?: number
+          origin_address?: string
+          price_per_km?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
