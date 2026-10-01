@@ -294,6 +294,15 @@ function confirmOpts(pid){var x=P(pid),ex=[],err='';(x.a||[]).map(G).filter(Bool
  if(err){$('omr').textContent=err;return}addLine(pid,ex);$('om').classList.remove('on');grid();sheet()}
 /* ===== CARRINHO / CHECKOUT ===== */
 var FRETE={token:'',loja:{lat:null,lng:null},porKm:2.50,minimo:7.00,raioMax:20,base:0,origin:'Rua Frederico Hubner, 37, América, Joinville - SC, 89204-280, Brasil'};
+function applyDeliveryConfig(d){
+ if(!d)return;
+ FRETE.token=d.mapbox_token||FRETE.token;
+ FRETE.origin=d.origin_address||FRETE.origin;
+ FRETE.porKm=Number(d.price_per_km!=null?d.price_per_km:FRETE.porKm);
+ FRETE.minimo=Number(d.minimum_fee!=null?d.minimum_fee:FRETE.minimo);
+ FRETE.base=Number(d.base_fee!=null?d.base_fee:FRETE.base);
+ FRETE.raioMax=Number(d.max_delivery_km!=null?d.max_delivery_km:FRETE.raioMax);
+}
 var FRETE_ERRO='';
 var FRETE_BUSY=false;
 var STORE_GEOCODE=null;
@@ -349,8 +358,9 @@ window.calcularFrete=function(end){
 window.addEventListener('message',function(e){
  if(e.origin!==window.location.origin) return;
  var d=e.data||{};
- if(d.type==='FERREIRA_CATALOG'&&d.mapboxToken){
-   FRETE.token=d.mapboxToken;
+ if(d.type==='FERREIRA_CATALOG'){
+   if(d.mapboxToken) FRETE.token=d.mapboxToken;
+   if(d.delivery) applyDeliveryConfig(d.delivery);
    FRETE_ERRO='';
    if(M==='entrega'&&L.length) recalc();
  }
