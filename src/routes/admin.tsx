@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { loadRemoteCatalog, saveRemoteCatalog } from "@/lib/catalog";
 import { productPath } from "@/lib/product-slug";
@@ -373,7 +373,7 @@ function CatalogAdminPage() {
 
 function DeliverySettingsPanel({ delivery, setDelivery, saving, onSave, onTest }: {
   delivery: DeliverySettings;
-  setDelivery: React.Dispatch<React.SetStateAction<DeliverySettings>>;
+  setDelivery: Dispatch<SetStateAction<DeliverySettings>>;
   saving: boolean;
   onSave: () => void;
   onTest: () => void;
