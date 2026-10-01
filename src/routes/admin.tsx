@@ -33,6 +33,28 @@ type Catalog = {
   groups: AddonGroup[];
 };
 
+type DeliverySettings = {
+  id: boolean;
+  mapbox_token: string;
+  origin_address: string;
+  price_per_km: number;
+  minimum_fee: number;
+  base_fee: number;
+  max_delivery_km: number;
+  active: boolean;
+};
+
+const emptyDelivery: DeliverySettings = {
+  id: true,
+  mapbox_token: "",
+  origin_address: "Rua Frederico Hubner, 37, América, Joinville - SC, 89204-280, Brasil",
+  price_per_km: 2.5,
+  minimum_fee: 7,
+  base_fee: 0,
+  max_delivery_km: 20,
+  active: true,
+};
+
 const emptyCatalog: Catalog = { prods: [], cats: [], groups: [] };
 
 export const Route = createFileRoute("/admin")({
@@ -64,11 +86,22 @@ function AdminPage() {
 
 function CatalogAdminPage() {
   const [catalog, setCatalog] = useState<Catalog>({ prods: [], cats: [], groups: [] });
-  const [section, setSection] = useState<"produtos" | "categorias" | "adicionais">("produtos");
+  const [section, setSection] = useState<"produtos" | "categorias" | "adicionais" | "entrega">("produtos");
+  const [delivery, setDelivery] = useState<DeliverySettings>(emptyDelivery);
+  const [deliverySaving, setDeliverySaving] = useState(false);
   const [query, setQuery] = useState("");
   const [editing, setEditing] = useState<Product | null>(null);
   const [notice, setNotice] = useState("");
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase.from("store_delivery_settings").select("*").eq("id", true).maybeSingle();
+      if (!cancelled && data && !error) setDelivery({ ...emptyDelivery, ...data });
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -154,6 +187,54 @@ function CatalogAdminPage() {
     window.setTimeout(() => setNotice(""), 3500);
   }
 
+  async function saveDelivery() {
+    setDeliverySaving(true);
+    setNotice("");
+    const { data, error } = await supabase
+      .from("store_delivery_settings")
+      .upsert({
+        id: true,
+        mapbox_token: delivery.mapbox_token.trim(),
+        origin_address: delivery.origin_address.trim(),
+        price_per_km: Math.max(0, Number(delivery.price_per_km) || 0),
+        minimum_fee: Math.max(0, Number(delivery.minimum_fee) || 0),
+        base_fee: Math.max(0, Number(delivery.base_fee) || 0),
+        max_delivery_km: Math.max(0, Number(delivery.max_delivery_km) || 0),
+        active: delivery.active,
+        updated_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+    setDeliverySaving(false);
+    if (error) setNotice("Erro ao salvar entrega: " + error.message);
+    else {
+      setDelivery({ ...emptyDelivery, ...data });
+      setNotice("Configurações de entrega salvas.");
+    }
+  }
+
+  async function testMapbox() {
+    if (!delivery.mapbox_token.trim()) {
+      setNotice("Informe o token público do Mapbox.");
+      return;
+    }
+    setNotice("Testando conexão com Mapbox...");
+    try {
+      const url = new URL("https://api.mapbox.com/search/geocode/v6/forward");
+      url.searchParams.set("q", "Joinville, SC, Brasil");
+      url.searchParams.set("country", "BR");
+      url.searchParams.set("limit", "1");
+      url.searchParams.set("access_token", delivery.mapbox_token.trim());
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("Mapbox recusou o token (HTTP " + response.status + ").");
+      const json = await response.json();
+      if (!json.features?.length) throw new Error("Mapbox não retornou resultados.");
+      setNotice("Conexão Mapbox OK.");
+    } catch (e) {
+      setNotice(e instanceof Error ? e.message : "Falha ao testar Mapbox.");
+    }
+  }
+
   function exportCatalog() {
     const blob = new Blob([JSON.stringify(catalog, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -191,6 +272,7 @@ function CatalogAdminPage() {
           <NavButton active={section === "produtos"} onClick={() => setSection("produtos")}>Produtos <Badge>{catalog.prods.length}</Badge></NavButton>
           <NavButton active={section === "categorias"} onClick={() => setSection("categorias")}>Categorias <Badge>{catalog.cats.length}</Badge></NavButton>
           <NavButton active={section === "adicionais"} onClick={() => setSection("adicionais")}>Adicionais <Badge>{catalog.groups.length}</Badge></NavButton>
+          <NavButton active={section === "entrega"} onClick={() => setSection("entrega")}>Entrega / Frete</NavButton>
           <div className="my-3 border-t border-black/5" />
           <button onClick={exportCatalog} className="w-full rounded-xl px-3 py-2.5 text-left text-sm font-medium hover:bg-gray-50">Exportar catálogo</button>
           <button onClick={migrateInitialCatalog} disabled={saving} className="w-full rounded-xl px-3 py-2.5 text-left text-sm font-medium hover:bg-gray-50 disabled:opacity-50">Restaurar catálogo original</button>
@@ -263,6 +345,15 @@ function CatalogAdminPage() {
 
           {section === "categorias" && <CategoryManager catalog={catalog} commit={commit} />}
           {section === "adicionais" && <AddonManager catalog={catalog} commit={commit} />}
+          {section === "entrega" && (
+            <DeliverySettingsPanel
+              delivery={delivery}
+              setDelivery={setDelivery}
+              saving={deliverySaving}
+              onSave={saveDelivery}
+              onTest={testMapbox}
+            />
+          )}
         </section>
       </main>
 
@@ -271,10 +362,59 @@ function CatalogAdminPage() {
           <NavButton active={section === "produtos"} onClick={() => setSection("produtos")}>Produtos <Badge>{catalog.prods.length}</Badge></NavButton>
           <NavButton active={section === "categorias"} onClick={() => setSection("categorias")}>Categorias <Badge>{catalog.cats.length}</Badge></NavButton>
           <NavButton active={section === "adicionais"} onClick={() => setSection("adicionais")}>Adicionais <Badge>{catalog.groups.length}</Badge></NavButton>
+          <NavButton active={section === "entrega"} onClick={() => setSection("entrega")}>Entrega / Frete</NavButton>
         </div>
       </div>
 
       {editing && <ProductEditor product={editing} catalog={catalog} onCancel={() => setEditing(null)} onSave={updateProduct} />}
+    </div>
+  );
+}
+
+function DeliverySettingsPanel({ delivery, setDelivery, saving, onSave, onTest }: {
+  delivery: DeliverySettings;
+  setDelivery: React.Dispatch<React.SetStateAction<DeliverySettings>>;
+  saving: boolean;
+  onSave: () => void;
+  onTest: () => void;
+}) {
+  const field = "mt-1 w-full rounded-xl border border-black/10 bg-gray-50 px-4 py-3 text-sm outline-none focus:border-black/30";
+  return (
+    <div>
+      <div className="mb-5">
+        <h2 className="text-2xl font-semibold">Entrega / Frete</h2>
+        <p className="mt-1 text-sm text-gray-500">Configure o cálculo do frete pela distância real usando o Mapbox.</p>
+      </div>
+      <div className="max-w-3xl space-y-5 rounded-2xl border border-black/10 bg-white p-5 shadow-sm sm:p-7">
+        <label className="block text-sm font-medium">Token público do Mapbox
+          <input type="password" value={delivery.mapbox_token} onChange={e => setDelivery(v => ({...v, mapbox_token:e.target.value}))} placeholder="pk...." className={field} />
+        </label>
+        <label className="block text-sm font-medium">Endereço de origem da entrega
+          <input value={delivery.origin_address} onChange={e => setDelivery(v => ({...v, origin_address:e.target.value}))} className={field} />
+        </label>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="block text-sm font-medium">Valor por km (R$)
+            <input type="number" min="0" step="0.01" value={delivery.price_per_km} onChange={e => setDelivery(v => ({...v, price_per_km:Number(e.target.value)}))} className={field} />
+          </label>
+          <label className="block text-sm font-medium">Frete mínimo (R$)
+            <input type="number" min="0" step="0.01" value={delivery.minimum_fee} onChange={e => setDelivery(v => ({...v, minimum_fee:Number(e.target.value)}))} className={field} />
+          </label>
+          <label className="block text-sm font-medium">Taxa base (R$)
+            <input type="number" min="0" step="0.01" value={delivery.base_fee} onChange={e => setDelivery(v => ({...v, base_fee:Number(e.target.value)}))} className={field} />
+          </label>
+          <label className="block text-sm font-medium">Distância máxima (km)
+            <input type="number" min="0" step="0.1" value={delivery.max_delivery_km} onChange={e => setDelivery(v => ({...v, max_delivery_km:Number(e.target.value)}))} className={field} />
+          </label>
+        </div>
+        <label className="flex items-center gap-3 text-sm font-medium">
+          <input type="checkbox" checked={delivery.active} onChange={e => setDelivery(v => ({...v, active:e.target.checked}))} className="h-4 w-4" />
+          Entregas ativas
+        </label>
+        <div className="flex flex-wrap gap-3">
+          <button onClick={onSave} disabled={saving} className="rounded-xl bg-[#171717] px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">{saving ? "Salvando..." : "Salvar configurações"}</button>
+          <button onClick={onTest} className="rounded-xl border border-black/10 bg-white px-4 py-3 text-sm font-semibold">Testar conexão Mapbox</button>
+        </div>
+      </div>
     </div>
   );
 }
