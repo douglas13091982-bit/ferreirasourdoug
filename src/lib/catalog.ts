@@ -167,16 +167,22 @@ export async function saveRemoteCatalog(catalog: Catalog): Promise<{ ok: boolean
     const { error } = await supabase.from("catalog_product_addon_groups").upsert(linkRows);
     if (error) return { ok: false, error: error.message };
   }
-  const tables = ["catalog_addon_items", "catalog_products", "catalog_addon_groups", "catalog_categories"] as const;
-  const wanted = [itemRows, productRows, groupRows, categoryRows];
-  for (let i = 0; i < tables.length; i++) {
-    const keep = new Set(wanted[i].map(row => row.id));
-    for (const row of existing[i + 1].data ?? []) {
-      if (!keep.has(row.id)) {
-        const { error } = await supabase.from(tables[i]).delete().eq("id", row.id);
-        if (error) return { ok: false, error: error.message };
+  const removeMissing = async (table: "catalog_addon_items" | "catalog_products" | "catalog_addon_groups" | "catalog_categories", ids: string[], keep: Set<string>) => {
+    for (const id of ids) {
+      if (!keep.has(id)) {
+        const { error } = await supabase.from(table).delete().eq("id", id);
+        if (error) return error.message;
       }
     }
-  }
+    return null;
+  };
+  const deletions = [
+    await removeMissing("catalog_addon_items", (existing[1]?.data ?? []).map(r => r.id), new Set(itemRows.map(r => r.id))),
+    await removeMissing("catalog_products", (existing[2]?.data ?? []).map(r => r.id), new Set(productRows.map(r => r.id))),
+    await removeMissing("catalog_addon_groups", (existing[3]?.data ?? []).map(r => r.id), new Set(groupRows.map(r => r.id))),
+    await removeMissing("catalog_categories", (existing[4]?.data ?? []).map(r => r.id), new Set(categoryRows.map(r => r.id))),
+  ];
+  const deletionError = deletions.find(Boolean);
+  if (deletionError) return { ok: false, error: deletionError };
   return { ok:true, catalog: normalized };
 }
