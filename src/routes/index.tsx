@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { loadRemoteCatalog } from "@/lib/catalog";
+import { supabase } from "@/lib/supabase";
 
 const title =
   "Ferreira Sourdough – Pães, Pizza e Charcutaria Artesanal em Joinville";
@@ -35,10 +36,17 @@ function Index() {
 
   function postCatalog() {
     if (iframeRef.current?.contentWindow) {
-      iframeRef.current.contentWindow.postMessage(
-        { type: "FERREIRA_CATALOG", catalog, mapboxToken: import.meta.env.VITE_MAPBOX_TOKEN || "" },
+      const send = (delivery?: unknown) => iframeRef.current?.contentWindow?.postMessage(
+        { type: "FERREIRA_CATALOG", catalog, mapboxToken: import.meta.env.VITE_MAPBOX_TOKEN || "", delivery },
         window.location.origin,
       );
+      if (supabase) {
+        supabase.from("store_delivery_settings").select("*").eq("id", true).maybeSingle()
+          .then(({ data }) => send(data || undefined))
+          .catch(() => send());
+      } else {
+        send();
+      }
     }
   }
 
