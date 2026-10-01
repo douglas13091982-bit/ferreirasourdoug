@@ -37,16 +37,11 @@ function Index() {
   function postCatalog() {
     if (iframeRef.current?.contentWindow) {
       const send = (delivery?: unknown) => iframeRef.current?.contentWindow?.postMessage(
-        { type: "FERREIRA_CATALOG", catalog, mapboxToken: import.meta.env.VITE_MAPBOX_TOKEN || "", delivery },
+        { type: "FERREIRA_CATALOG", catalog, mapboxToken: import.meta.env['VITE_MAPBOX_TOKEN'] || "", delivery },
         window.location.origin,
       );
-      if (supabase) {
-        supabase.from("store_delivery_settings").select("*").eq("id", true).maybeSingle()
-          .then(({ data }) => send(data || undefined))
-          .catch(() => send());
-      } else {
-        send();
-      }
+      supabase.from("store_delivery_settings").select("*").eq("id", true).maybeSingle()
+        .then(({ data }) => send(data || undefined), () => send());
     }
   }
 

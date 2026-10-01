@@ -5,6 +5,14 @@ import { loadRemoteCatalog, readLocalCatalog } from "@/lib/catalog";
 import { productMatchesSlug } from "@/lib/product-slug";
 
 export const Route = createFileRoute("/produto/$slug")({
+  head: () => ({ meta: [
+    { title: "Produto | Ferreira Sourdough" },
+    { name: "description", content: "Conheça os produtos artesanais da Ferreira Sourdough em Joinville." },
+    { property: "og:title", content: "Produto | Ferreira Sourdough" },
+    { property: "og:description", content: "Conheça os produtos artesanais da Ferreira Sourdough em Joinville." },
+    { property: "og:type", content: "product" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: ProductPage,
 });
 
@@ -104,18 +112,20 @@ function ProductPage() {
   }
 
   function addToCart() {
-    if (product.p === null || !validate()) return;
+    if (!product || product.p === null || !validate()) return;
+    const productId = product.id;
     const extras = addonGroups.flatMap((group) =>
       (selected[group.id] ?? []).map((itemId) => {
-        const item = group.items.find((entry) => entry.id === itemId)!;
+        const item = group.items.find((entry) => entry.id === itemId);
+        if (!item) return null;
         return { g: group.id, i: item.id, n: item.n, p: item.p || 0 };
-      }),
+      }).filter((item): item is NonNullable<typeof item> => item !== null),
     );
     try {
       const raw = localStorage.getItem("fs_pending_cart_v1");
       const pending = raw ? JSON.parse(raw) : { items: [] };
       const items = Array.isArray(pending.items) ? pending.items : [];
-      for (let index = 0; index < quantity; index += 1) items.push({ pid: product.id, ex: extras });
+      for (let index = 0; index < quantity; index += 1) items.push({ pid: productId, ex: extras });
       localStorage.setItem("fs_pending_cart_v1", JSON.stringify({ items }));
       setAdded(true);
     } catch {
