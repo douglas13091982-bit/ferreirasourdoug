@@ -61,7 +61,12 @@ function Index() {
           .maybeSingle();
 
         iframeRef.current?.contentWindow?.postMessage(
-          { type: "FERREIRA_DELIVERY_CONFIG", delivery: data || undefined },
+          {
+            type: "FERREIRA_CATALOG",
+            catalog,
+            mapboxToken: data?.mapbox_token || import.meta.env['VITE_MAPBOX_TOKEN'] || "",
+            delivery: data || undefined,
+          },
           window.location.origin,
         );
         return;
