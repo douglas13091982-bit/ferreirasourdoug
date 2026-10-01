@@ -414,12 +414,20 @@ function delform(){
  '<div class="ar"><button class="btn" data-a="ds">Salvar configurações de entrega</button><button data-a="dt">Testar conexão Mapbox</button></div>'+
  '<p class="nt" id="dmsg"></p>';
 }
+function deliveryDefaults(){return {id:true,mapbox_token:'',origin_address:'',price_per_km:2.5,minimum_fee:7,base_fee:0,max_delivery_km:20,active:true}}
+function applyDeliveryState(d){
+ DELIVERY=Object.assign(deliveryDefaults(),d||{});
+ FRETE.token=DELIVERY.mapbox_token||'';
+ FRETE.origin=DELIVERY.origin_address||FRETE.origin;
+ FRETE.porKm=Number(DELIVERY.price_per_km||0);
+ FRETE.minimo=Number(DELIVERY.minimum_fee||0);
+ FRETE.base=Number(DELIVERY.base_fee||0);
+ FRETE.raioMax=Number(DELIVERY.max_delivery_km||0);
+}
 function loadDelivery(){
- if(!supabase){DELIVERY={mapbox_token:'',origin_address:'',price_per_km:2.5,minimum_fee:7,base_fee:0,max_delivery_km:20,active:true};return Promise.resolve();}
- return supabase.from('store_delivery_settings').select('*').eq('id',true).maybeSingle().then(function(r){
-   if(r.error||!r.data) DELIVERY={mapbox_token:'',origin_address:'',price_per_km:2.5,minimum_fee:7,base_fee:0,max_delivery_km:20,active:true};
-   else DELIVERY=r.data;
- }).catch(function(){DELIVERY={mapbox_token:'',origin_address:'',price_per_km:2.5,minimum_fee:7,base_fee:0,max_delivery_km:20,active:true}});
+ applyDeliveryState(window.__FERREIRA_DELIVERY__||{});
+ if(window.parent&&window.parent!==window)window.parent.postMessage({type:'FERREIRA_DELIVERY_REQUEST'},window.location.origin);
+ return Promise.resolve(DELIVERY);
 }
 function saveDelivery(){
  var p={
@@ -433,17 +441,20 @@ function saveDelivery(){
    active:$('dactive').checked,
    updated_at:new Date().toISOString()
  };
- return supabase.from('store_delivery_settings').upsert(p).select().single().then(function(r){
-   if(r.error)throw r.error;
-   DELIVERY=r.data;
-   FRETE.token=DELIVERY.mapbox_token||'';
-   FRETE.origin=DELIVERY.origin_address||FRETE.origin;
-   FRETE.porKm=Number(DELIVERY.price_per_km||0);
-   FRETE.minimo=Number(DELIVERY.minimum_fee||0);
-   FRETE.base=Number(DELIVERY.base_fee||0);
-   FRETE.raioMax=Number(DELIVERY.max_delivery_km||0);
-   $('dmsg').textContent='Configurações salvas ✓';
-   return r.data;
+ return new Promise(function(resolve,reject){
+   if(!window.parent||window.parent===window){reject(new Error('Não foi possível acessar o serviço de configurações.'));return}
+   var done=false;
+   var timer=setTimeout(function(){if(done)return;done=true;window.removeEventListener('message',onResult);reject(new Error('Tempo esgotado ao salvar as configurações.'))},12000);
+   function onResult(e){
+     if(e.origin!==window.location.origin||!e.data||e.data.type!=='FERREIRA_DELIVERY_SAVE_RESULT')return;
+     if(done)return;done=true;clearTimeout(timer);window.removeEventListener('message',onResult);
+     if(e.data.error){reject(new Error(e.data.error));return}
+     applyDeliveryState(e.data.delivery||p);
+     if($('dmsg'))$('dmsg').textContent='Configurações salvas ✓';
+     resolve(DELIVERY);
+   }
+   window.addEventListener('message',onResult);
+   window.parent.postMessage({type:'FERREIRA_DELIVERY_SAVE',settings:p},window.location.origin);
  });
 }
 function testMapbox(){
@@ -503,7 +514,14 @@ $('ad').addEventListener('click',function(e){var b=e.target.closest('button');if
  else if(a==='br'){if(confirm('Voltar ao cardápio original?')){CAT=JSON.parse(JSON.stringify(DEF));persist()}}
  adm();tabs();grid()});
 window.addEventListener('message',function(e){
- if(e.origin!==window.location.origin||!e.data||e.data.type!=='FERREIRA_CATALOG'||!e.data.catalog)return;
+ if(e.origin!==window.location.origin||!e.data)return;
+ if(e.data.type==='FERREIRA_DELIVERY_CONFIG'){
+   applyDeliveryState(e.data.delivery||{});
+   window.__FERREIRA_DELIVERY__=DELIVERY;
+   if(TAB==='del'&&$('ad')&&!$('ad').hidden)adm();
+   return;
+ }
+ if(e.data.type!=='FERREIRA_CATALOG'||!e.data.catalog)return;
  var c=e.data.catalog;
  if(!Array.isArray(c.prods)||!Array.isArray(c.cats)||!Array.isArray(c.groups))return;
  CAT={prods:c.prods,cats:c.cats,groups:c.groups};
