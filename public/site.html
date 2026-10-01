@@ -358,7 +358,7 @@ window.calcularFrete=function(end){
 window.addEventListener('message',function(e){
  if(e.origin!==window.location.origin) return;
  var d=e.data||{};
- if(d.type==='FERREIRA_CATALOG'){
+ if(d.type==='FERREIRA_CATALOG'||d.type==='FERREIRA_DELIVERY_CONFIG'){
    if(d.mapboxToken) FRETE.token=d.mapboxToken;
    if(d.delivery) applyDeliveryConfig(d.delivery);
    FRETE_ERRO='';
