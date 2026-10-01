@@ -379,13 +379,70 @@ $('go').onclick=function(){var er=$('er'),s='',t=tot()[1];er.textContent='';
  m+='\n\nPagamento: '+pg+(pg==='Dinheiro'&&$('troco').value?' (troco para '+$('troco').value+')':'')+'\nNome: '+$('nm').value+'\nTelefone: '+$('tel').value+($('obs').value?'\nObs.: '+$('obs').value:'');
  window.open('https://wa.me/'+WA+'?text='+encodeURIComponent(m),'_blank')};
 /* ===== PAINEL ADMIN (#admin) ===== */
-var TAB='prod',ED=null;
+var TAB='prod',ED=null,DELIVERY=null;
 function canAdmin(){if(window.AdminAuth)return Promise.resolve(window.AdminAuth());return useCap('user').then(function(u){return u?u.canEdit():false}).catch(function(){return false})}
-function openAdmin(){canAdmin().then(function(ok){if(!ok){alert('Acesso restrito ao administrador.');return}$('ad').hidden=false;document.body.style.overflow='hidden';ED=null;adm()})}
+function openAdmin(){canAdmin().then(function(ok){if(!ok){alert('Acesso restrito ao administrador.');return}$('ad').hidden=false;document.body.style.overflow='hidden';ED=null;loadDelivery().then(function(){adm()})})}
 function closeAdmin(){$('ad').hidden=true;document.body.style.overflow='';if(location.hash==='#admin')history.replaceState(null,'',location.pathname+location.search)}
-function adm(){var T=[['prod','Produtos'],['add','Adicionais'],['cat','Categorias'],['bk','Backup']];
+function adm(){var T=[['prod','Produtos'],['add','Adicionais'],['cat','Categorias'],['del','Entrega/Frete'],['bk','Backup']];
  $('at').innerHTML=T.map(function(t){return '<button data-tab="'+t[0]+'" aria-selected="'+(t[0]===TAB)+'">'+t[1]+'</button>'}).join('');
- $('ab').innerHTML=TAB==='prod'?(ED?pform():plist()):TAB==='add'?alist():TAB==='cat'?clist():bk()}
+ $('ab').innerHTML=TAB==='prod'?(ED?pform():plist()):TAB==='add'?alist():TAB==='cat'?clist():TAB==='del'?delform():bk()}
+function delform(){
+ if(!DELIVERY)return '<p class="nt">Carregando configurações de entrega...</p>';
+ return '<h3>Configurações de entrega e frete</h3>'+
+ '<p class="nt">O frete é calculado pela rota de carro do Mapbox, usando a distância real entre a loja e o endereço do cliente.</p>'+
+ fld('Token público do Mapbox','<input id="dtoken" type="password" autocomplete="off" value="'+esc(DELIVERY.mapbox_token||'')+'" placeholder="pk....">')+
+ fld('Endereço de origem da entrega','<input id="dorigin" value="'+esc(DELIVERY.origin_address||'')+'">')+
+ '<div class="gd">'+
+ fld('Valor por km (R$)','<input id="dpk" type="number" step="0.01" min="0" value="'+Number(DELIVERY.price_per_km||0).toFixed(2)+'">')+
+ fld('Frete mínimo (R$)','<input id="dmin" type="number" step="0.01" min="0" value="'+Number(DELIVERY.minimum_fee||0).toFixed(2)+'">')+
+ '</div>'+
+ '<div class="gd">'+
+ fld('Taxa base (R$)','<input id="dbase" type="number" step="0.01" min="0" value="'+Number(DELIVERY.base_fee||0).toFixed(2)+'">')+
+ fld('Distância máxima (km)','<input id="dmax" type="number" step="0.1" min="0" value="'+Number(DELIVERY.max_delivery_km||0).toFixed(1)+'">')+
+ '</div>'+
+ '<label class="op"><input id="dactive" type="checkbox" '+(DELIVERY.active!==false?'checked':'')+'> Entregas ativas</label>'+
+ '<div class="ar"><button class="btn" data-a="ds">Salvar configurações de entrega</button><button data-a="dt">Testar conexão Mapbox</button></div>'+
+ '<p class="nt" id="dmsg"></p>';
+}
+function loadDelivery(){
+ if(!supabase){DELIVERY={mapbox_token:'',origin_address:'',price_per_km:2.5,minimum_fee:7,base_fee:0,max_delivery_km:20,active:true};return Promise.resolve();}
+ return supabase.from('store_delivery_settings').select('*').eq('id',true).maybeSingle().then(function(r){
+   if(r.error||!r.data) DELIVERY={mapbox_token:'',origin_address:'',price_per_km:2.5,minimum_fee:7,base_fee:0,max_delivery_km:20,active:true};
+   else DELIVERY=r.data;
+ }).catch(function(){DELIVERY={mapbox_token:'',origin_address:'',price_per_km:2.5,minimum_fee:7,base_fee:0,max_delivery_km:20,active:true}});
+}
+function saveDelivery(){
+ var p={
+   id:true,
+   mapbox_token:($('dtoken').value||'').trim(),
+   origin_address:($('dorigin').value||'').trim(),
+   price_per_km:Math.max(0,Number($('dpk').value)||0),
+   minimum_fee:Math.max(0,Number($('dmin').value)||0),
+   base_fee:Math.max(0,Number($('dbase').value)||0),
+   max_delivery_km:Math.max(0,Number($('dmax').value)||0),
+   active:$('dactive').checked,
+   updated_at:new Date().toISOString()
+ };
+ return supabase.from('store_delivery_settings').upsert(p).select().single().then(function(r){
+   if(r.error)throw r.error;
+   DELIVERY=r.data;
+   FRETE.token=DELIVERY.mapbox_token||'';
+   FRETE.origin=DELIVERY.origin_address||FRETE.origin;
+   FRETE.porKm=Number(DELIVERY.price_per_km||0);
+   FRETE.minimo=Number(DELIVERY.minimum_fee||0);
+   FRETE.base=Number(DELIVERY.base_fee||0);
+   FRETE.raioMax=Number(DELIVERY.max_delivery_km||0);
+   $('dmsg').textContent='Configurações salvas ✓';
+   return r.data;
+ });
+}
+function testMapbox(){
+ var token=($('dtoken').value||'').trim();
+ var msg=$('dmsg');
+ if(!token){msg.textContent='Informe o token público pk... do Mapbox.';return;}
+ msg.textContent='Testando conexão...';
+ fetch('https://api.mapbox.com/search/geocode/v6/forward?'+new URLSearchParams({q:'Joinville, SC, Brasil',country:'BR',limit:'1',access_token:token})).then(function(r){if(!r.ok)throw new Error('Token recusado pelo Mapbox (HTTP '+r.status+')');return r.json()}).then(function(d){if(!d.features||!d.features.length)throw new Error('Mapbox não retornou resultado.');msg.textContent='Conexão Mapbox OK ✓';}).catch(function(e){msg.textContent=e.message||'Falha na conexão com Mapbox.'});
+}
 function plist(){var h='<div class="ar"><button class="btn" data-a="pn">+ Novo produto</button></div>';
  CAT.prods.forEach(function(x){h+='<div class="ai"><span class="th">'+(x.i?'<img src="'+esc(x.i)+'" alt="">':'')+'</span><div class="am"><b>'+esc(x.n)+'</b><small>'+esc(catName(x.c))+' · '+(x.p==null?'Sob consulta':R(x.p)+' '+esc(x.u||''))+(x.on===false?' · <em>oculto</em>':'')+'</small></div><button data-a="pt" data-id="'+x.id+'">'+(x.on===false?'Mostrar':'Ocultar')+'</button><button data-a="pe" data-id="'+x.id+'">Editar</button><button data-a="pd" data-id="'+x.id+'">Excluir</button></div>'});
  return h}
@@ -412,8 +469,10 @@ function shrink(file,cb){var r=new FileReader();r.onload=function(){var im=new I
 document.addEventListener('change',function(e){if(e.target.id==='ff'&&e.target.files[0])shrink(e.target.files[0],function(u){ED.p.i=u;var p=$('pv');p.src=u;p.hidden=false;$('fi').value=''})});
 $('ad').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;var d=b.dataset;
  if(b.id==='acl'){closeAdmin();return}
- if(d.tab){collectG();TAB=d.tab;ED=null;adm();return}
+ if(d.tab){collectG();TAB=d.tab;ED=null;if(TAB==='del'){loadDelivery().then(adm)}else adm();return}
  var a=d.a;if(!a)return;
+ if(a==='ds'){saveDelivery().catch(function(e){$('dmsg').textContent='Erro ao salvar: '+(e.message||e)});return}
+ if(a==='dt'){testMapbox();return}
  if(a==='pn'){ED={isNew:true,p:{id:uid(),c:CAT.cats[0]?CAT.cats[0].id:'',n:'',d:'',p:null,u:'',i:'',a:[],on:true}}}
  else if(a==='pe'){ED={p:JSON.parse(JSON.stringify(P(d.id)))}}
  else if(a==='pc'){ED=null}
