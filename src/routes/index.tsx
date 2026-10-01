@@ -34,7 +34,7 @@ function Index() {
   }, []);
 
   function postCatalog() {
-    if (catalog && iframeRef.current?.contentWindow) {
+    if (iframeRef.current?.contentWindow) {
       iframeRef.current.contentWindow.postMessage(
         { type: "FERREIRA_CATALOG", catalog, mapboxToken: import.meta.env.VITE_MAPBOX_TOKEN || "" },
         window.location.origin,
