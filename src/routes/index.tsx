@@ -114,7 +114,7 @@ function Index() {
   return (
     <iframe
       ref={iframeRef}
-      src="/site.html"
+      src="/menu-reference.html"
       title={title}
       onLoad={postCatalog}
       className="h-screen w-screen border-0"
