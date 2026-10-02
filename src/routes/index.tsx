@@ -31,29 +31,16 @@ function Index() {
     loadRemoteCatalog().then((remote) => {
       if (active && remote) setCatalog(remote);
     });
-    return () => {
-      active = false;
-    };
+    return () => { active = false; };
   }, []);
 
   function postCatalog() {
     if (iframeRef.current?.contentWindow) {
-      const send = (delivery?: unknown) =>
-        iframeRef.current?.contentWindow?.postMessage(
-          {
-            type: "FERREIRA_CATALOG",
-            catalog,
-            mapboxToken: import.meta.env["VITE_MAPBOX_TOKEN"] || "",
-            delivery,
-          },
-          window.location.origin,
-        );
-
-      supabase
-        .from("store_delivery_settings")
-        .select("*")
-        .eq("id", true)
-        .maybeSingle()
+      const send = (delivery?: unknown) => iframeRef.current?.contentWindow?.postMessage(
+        { type: "FERREIRA_CATALOG", catalog, mapboxToken: import.meta.env['VITE_MAPBOX_TOKEN'] || "", delivery },
+        window.location.origin,
+      );
+      supabase.from("store_delivery_settings").select("*").eq("id", true).maybeSingle()
         .then(({ data }) => send(data || undefined), () => send());
     }
   }
@@ -77,8 +64,7 @@ function Index() {
           {
             type: "FERREIRA_CATALOG",
             catalog,
-            mapboxToken:
-              data?.mapbox_token || import.meta.env["VITE_MAPBOX_TOKEN"] || "",
+            mapboxToken: data?.mapbox_token || import.meta.env['VITE_MAPBOX_TOKEN'] || "",
             delivery: data || undefined,
           },
           window.location.origin,
@@ -109,12 +95,12 @@ function Index() {
 
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, [catalog]);
+  }, []);
 
   return (
     <iframe
       ref={iframeRef}
-      src="/menu-reference.html"
+      src="/site.html"
       title={title}
       onLoad={postCatalog}
       className="h-screen w-screen border-0"
