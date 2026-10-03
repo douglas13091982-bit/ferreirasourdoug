@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as CardapioRouteImport } from './routes/cardapio'
 import { Route as ProdutoSlugRouteImport } from './routes/produto.$slug'
 
 const IndexRoute = IndexRouteImport.update({
@@ -23,6 +24,11 @@ const AdminRoute = AdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CardapioRoute = CardapioRouteImport.update({
+  id: '/cardapio',
+  path: '/cardapio',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProdutoSlugRoute = ProdutoSlugRouteImport.update({
   id: '/produto/$slug',
   path: '/produto/$slug',
@@ -32,30 +38,34 @@ const ProdutoSlugRoute = ProdutoSlugRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/cardapio': typeof CardapioRoute
   '/produto/$slug': typeof ProdutoSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/cardapio': typeof CardapioRoute
   '/produto/$slug': typeof ProdutoSlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/cardapio': typeof CardapioRoute
   '/produto/$slug': typeof ProdutoSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/produto/$slug'
+  fullPaths: '/' | '/admin' | '/cardapio' | '/produto/$slug'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/produto/$slug'
-  id: '__root__' | '/' | '/admin' | '/produto/$slug'
+  to: '/' | '/admin' | '/cardapio' | '/produto/$slug'
+  id: '__root__' | '/' | '/admin' | '/cardapio' | '/produto/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
+  CardapioRoute: typeof CardapioRoute
   ProdutoSlugRoute: typeof ProdutoSlugRoute
 }
 
@@ -75,6 +85,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cardapio': {
+      id: '/cardapio'
+      path: '/cardapio'
+      fullPath: '/cardapio'
+      preLoaderRoute: typeof CardapioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/produto/$slug': {
       id: '/produto/$slug'
       path: '/produto/$slug'
@@ -88,6 +105,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
+  CardapioRoute: CardapioRoute,
   ProdutoSlugRoute: ProdutoSlugRoute,
 }
 export const routeTree = rootRouteImport
